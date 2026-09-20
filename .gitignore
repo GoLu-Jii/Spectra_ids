@@ -35,7 +35,6 @@ temp/
 
 # Large detector training captures are kept outside the source repository.
 detectors/**/*.binetflow
-detectors/**/*.pkl
 
 # Secrets
 *.pem
