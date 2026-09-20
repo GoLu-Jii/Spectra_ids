@@ -35,6 +35,7 @@ temp/
 
 # Large detector training captures are kept outside the source repository.
 detectors/**/*.binetflow
+detectors/C2 Beaconing/botnet_c2_detector.pkl
 
 # Secrets
 *.pem

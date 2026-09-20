@@ -5,7 +5,7 @@
 - Detector: `c2_beaconing_detector.py`
 - Training/export source: `train_c2_model.py`
 - Intended training artifact: `botnet_c2_detector.pkl`
-- Artifact currently present in this checkout: `botnet_c2_detector.pkl`
+- Published artifact: `botnet_c2_detector.pkl.gz` (decompress to `botnet_c2_detector.pkl` before loading)
 
 The saved artifact is a 23-feature Random Forest model. The trainer now exports the same filename and schema as the wrapper.
 
