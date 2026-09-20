@@ -1,0 +1,23 @@
+{
+  "detector": "ddos",
+  "version": "1.0",
+  "features": [
+    "Flow Packets/s",
+    "Flow Bytes/s",
+    "Flow Duration",
+    "fwd_byte_ratio",
+    "packet_asymmetry",
+    "byte_asymmetry",
+    "syn_ratio",
+    "ack_ratio",
+    "rst_ratio",
+    "Packet Length Mean",
+    "packet_size_variability",
+    "is_udp"
+  ],
+  "feature_count": 12,
+  "target": {
+    "0": "Benign",
+    "1": "DDoS"
+  }
+}

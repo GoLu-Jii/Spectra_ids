@@ -1,0 +1,18 @@
+{
+  "model": "XGBoost",
+  "version": "1.0",
+  "features": [
+    "Destination Port",
+    "Flow Duration",
+    "Total Fwd Packets",
+    "Total Backward Packets",
+    "Flow Packets/s",
+    "Fwd Packets/s",
+    "Bwd Packets/s",
+    "FIN Flag Count"
+  ],
+  "target": {
+    "0": "BENIGN",
+    "1": "PortScan"
+  }
+}
