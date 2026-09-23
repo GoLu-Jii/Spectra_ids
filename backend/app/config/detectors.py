@@ -39,7 +39,7 @@ DETECTOR_CONFIGS: dict[str, DetectorConfig] = {
             "SYN Flag Count", "RST Flag Count", "ACK Flag Count",
             "Packet Length Mean", "Packet Length Std", "Protocol",
         ),
-        threshold=0.139203,
+        threshold=0.13920332491397858,
         score_type="probability",
         artifact_path="detectors/ddos/spectra_ddos_detector.joblib",
         expected_format="joblib",
