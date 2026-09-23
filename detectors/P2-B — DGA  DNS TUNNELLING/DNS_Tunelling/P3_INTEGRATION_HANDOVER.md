@@ -7,13 +7,13 @@
 - Feature schema: `dns_tunnelling_schema.json`
 - Training source: `DNS_tunnelling.ipynb`
 
-The restored model file is a 277 KB XGBoost artifact and is the model saved by the notebook's `joblib.dump(xgb_dns, ...)` cell.
+The original artifact was corrupt. `train_dns_tunnelling_model.py` rebuilds a loadable model from workspace `l2-benign.csv` and `l2-malicious.csv`; hashes, split, runtime and holdout scores are in `dns_tunnelling_training_metadata.json`.
 
 ## Inference contract
 
-The input must already be one aggregated flow/DoH statistical record. The exact feature order is the `expected_features` list in `dns_tunnelling_schema.json`: `Duration`, `FlowBytesSent`, `FlowSentRate`, `FlowBytesReceived`, `FlowReceivedRate`, the 8 packet-length statistics, the 8 packet-time statistics, and the 8 response-time statistics. The complete list is implemented as `FEATURE_ORDER` in `dns_tunnelling_detector.py`.
+The exact ordered feature list is `FEATURE_ORDER` in `dns_tunnelling_detector.py` and `expected_features` in `dns_tunnelling_schema.json` (29 columns). `predict()` accepts one engineered row. `predict_packets()` accepts one exchange of decoded packet metadata and applies `dns_flow_features.aggregate_dns_packets` first.
 
-Training dropped `SourceIP`, `DestinationIP`, `SourcePort`, `DestinationPort`, `TimeStamp`, and any `Label` column. It filled missing feature values with zero. No scaling, rolling calculation, event grouping, or feature encoding was implemented. The notebook expects the 29 statistical values to already exist in the input CSV; it does not provide packet-to-statistics aggregation logic.
+Packet records require timestamp in seconds, packet length, direction (`sent`/`received`), and optional matched response latency. `predict_pcap(path)` now reads PCAP/PCAPNG using `dpkt`, decodes classic DNS on UDP/TCP port 53 or 5353, matches DNS transaction IDs for UDP response latency, and groups by client/resolver address and port for the capture. TCP DNS segments that require reassembly are skipped. The statistics helper uses population variance/std, adjacent sorted packet-time deltas, first-seen mode on ties, and zero sentinels when intervals or matched responses are absent.
 
 ## Prediction and evidence
 
@@ -23,4 +23,4 @@ No minimum event count, grouping key, chronological window, environment variable
 
 ## Handover status
 
-The original model, schema, notebook, and wrapper are restored. The upstream packet-to-statistics extractor and original training CSVs are still not present in this workspace, so retraining cannot be reproduced until those CSVs are supplied.
+Fixtures: `fixtures/dns_tunnelling_inference_fixtures.json` has a benign and malicious held-out row; both replay to their expected class at threshold 0.50. The holdout is a random row split, so it does not establish capture-level generalization. A generated classic-DNS query/response PCAP smoke check confirmed parsing and 25 ms latency matching. No project PCAP was available for end-to-end validation. Encrypted DoH on port 443 is not decoded; confirm that classic DNS flow grouping matches the model's training rows before production use. Install this directory's `requirements.txt`.

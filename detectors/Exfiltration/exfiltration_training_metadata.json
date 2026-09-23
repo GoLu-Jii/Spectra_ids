@@ -1,0 +1,89 @@
+{
+  "model_version": "2.0.0-rebuilt",
+  "detector_version": "2.0.0",
+  "artifact": "dns_exfiltration_stateful_xgb_final.pkl",
+  "artifact_sha256": "a0a5e618f11cb0d7aa0a25c4d9d55a5b12f7f1c32279847a9d8f48d4a46ff2ab",
+  "feature_order": [
+    "rr_count_prev20_mean",
+    "ttl_range_prev20_mean",
+    "ttl_variance_prev20_std",
+    "ttl_mean_prev20_mean",
+    "rr_name_length_prev20_mean",
+    "PTR_frequency_prev20_mean",
+    "is_PTR_record_prev20_mean",
+    "reverse_dns_known_prev20_mean",
+    "ttl_unique_count_prev20_mean",
+    "rr_entropy_per_length_prev20_mean"
+  ],
+  "input_schema": [
+    "rr",
+    "A_frequency",
+    "NS_frequency",
+    "CNAME_frequency",
+    "SOA_frequency",
+    "NULL_frequency",
+    "PTR_frequency",
+    "HINFO_frequency",
+    "MX_frequency",
+    "TXT_frequency",
+    "AAAA_frequency",
+    "SRV_frequency",
+    "OPT_frequency",
+    "rr_type",
+    "rr_count",
+    "rr_name_entropy",
+    "rr_name_length",
+    "distinct_ns",
+    "distinct_ip",
+    "unique_country",
+    "unique_asn",
+    "distinct_domains",
+    "reverse_dns",
+    "a_records",
+    "unique_ttl",
+    "ttl_mean",
+    "ttl_variance"
+  ],
+  "state_semantics": {
+    "scope": "one capture or ordered DNS stream; reset between captures",
+    "history": "previous up to 20 records; current excluded from current score",
+    "initial_context": "zeros"
+  },
+  "threshold": 0.8499999999999999,
+  "threshold_selection": "maximum validation F1, thresholds 0.01 to 0.995 step 0.005",
+  "train_captures": [
+    "stateful_features-_light_benign.pcap.csv",
+    "stateful_features-light_exe.pcap.csv",
+    "stateful_features-light_text.pcap.csv"
+  ],
+  "validation_captures": [
+    "stateful_features-benign_2.pcap.csv",
+    "stateful_features-light_audio.pcap.csv",
+    "stateful_features-light_video.pcap.csv"
+  ],
+  "test_captures": [
+    "stateful_features-benign_1.pcap.csv",
+    "stateful_features-light_compressed.pcap.csv",
+    "stateful_features-light_image.pcap.csv"
+  ],
+  "test_accuracy": 0.9706947823736145,
+  "test_roc_auc": 0.984659993799169,
+  "test_rows": 55485,
+  "source_sha256": {
+    "stateful_features-_light_benign.pcap.csv": "10b6a92795ac6fff2e23cafd9677533bdc612ed4e8a5fdf8f26f07a187a635b4",
+    "stateful_features-light_exe.pcap.csv": "ad1cb141164b9c66c6283c0bf81f68550fd77b3e7268d88be00ecb7bffc41fa3",
+    "stateful_features-light_text.pcap.csv": "850df1cadc595a9d64933724c9e64fc954c553ee63d02cb86cdf2a7e4b2c9ac9",
+    "stateful_features-benign_2.pcap.csv": "5ba60d1966e719c8d4325bd0ccd58daff61b0da9e3d66cd9708ff2ae150084e3",
+    "stateful_features-light_audio.pcap.csv": "139db1a2bbc3d8c8968c44ada8dbdca65e84e1457d6ad49d375c2785e016be99",
+    "stateful_features-light_video.pcap.csv": "ab052ec8fedac67bb79bd061a1ced89d2aacbb96da43fc59262d908e9d20f4f4",
+    "stateful_features-benign_1.pcap.csv": "cd3abcf55d1fd314397f9e30187febc83bda748395f805d30bb1d57b55097e25",
+    "stateful_features-light_compressed.pcap.csv": "8942c043a4752c98e73854b50fb8507f674ffda77a78037d959ec6ae2ecd1f05",
+    "stateful_features-light_image.pcap.csv": "437e716bc653718fdf57c2ae40b618630f5a43ed8ed8eeaf534bac6b207dbd90"
+  },
+  "runtime": {
+    "xgboost": "3.4.1",
+    "pandas": "3.0.6",
+    "numpy": "2.5.3",
+    "joblib": "1.6.0"
+  }
+}

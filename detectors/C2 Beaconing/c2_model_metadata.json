@@ -1,0 +1,32 @@
+{
+  "detector": "C2 Beaconing",
+  "model_version": "legacy-unversioned-artifact",
+  "detector_version": "1.0.0",
+  "artifact": "botnet_c2_detector.pkl.gz",
+  "decompressed_artifact": "botnet_c2_detector.pkl",
+  "artifact_bytes": 31436294,
+  "artifact_sha256": "a0640ac711ae577d73a966446d8e8f8ec6dde1ad9fa99c2f2abc8eeedfee9400",
+  "artifact_sha256_uncompressed": "8fb243ba44cbc7318e2ebe879ccade9009aa9b57bff568d6be52fe48796ed385",
+  "model_class": "sklearn.ensemble.RandomForestClassifier",
+  "model_parameters": {"n_estimators": 150, "max_depth": 18, "min_samples_split": 2, "min_samples_leaf": 1, "class_weight": "balanced", "random_state": 42},
+  "feature_count": 23,
+  "feature_order": ["Dur", "Pkts", "Bytes", "IAT", "IAT_Variance", "IAT_Std", "Bytes_Variance", "Bytes_Per_Packet", "Proto_esp", "Proto_icmp", "Proto_igmp", "Proto_ipv6", "Proto_ipv6-icmp", "Proto_ipx/spx", "Proto_pim", "Proto_rarp", "Proto_rtcp", "Proto_rtp", "Proto_tcp", "Proto_udp", "Proto_udt", "Proto_unas", "FlowDir_Reverse"],
+  "threshold": 0.2,
+  "training_source_files": [
+    {"workspace_path": "../../../botnet_42.2format", "sha256": "e9d2d3c5adc6ea61e9149fdb12ad49a3aa84d296da9bacd0da07e95a05d43912"},
+    {"workspace_path": "../../../botnet_50 .2format", "sha256": "306ce0e7ec541012017a879223f8c3b970132767d6cddca60b2f7c465d3f3d9c"}
+  ],
+  "serialized_scikit_learn": "1.6.1",
+  "runtime": "requirements.txt; Python 3.10 through 3.13",
+  "limitation": "Capture-based replay found a botnet-labeled input classified benign. The two source data files are present in the workspace root but are outside this Git checkout. This pass recorded their provenance and updated the trainer paths; it did not retrain the artifact.",
+  "existing_model_validation": {
+    "report": "c2_existing_model_validation_report.json",
+    "input": "../../../botnet_50 .2format",
+    "windows": 167294,
+    "roc_auc": 0.8642977705487338,
+    "threshold_0_20": {"accuracy": 0.9748347221059931, "false_positive_rate": 0.005180929716598187, "malicious_recall": 0.43131636608798246},
+    "threshold_0_10": {"accuracy": 0.9475773189713916, "false_positive_rate": 0.045302148598484145, "malicious_recall": 0.7539187594808697},
+    "note": "Inference only; threshold 0.20 retained. The source file is designated validation by the notebook, but artifact provenance is unverified."
+  },
+  "fixture": "fixtures/c2_capture52_inference_fixtures.json"
+}

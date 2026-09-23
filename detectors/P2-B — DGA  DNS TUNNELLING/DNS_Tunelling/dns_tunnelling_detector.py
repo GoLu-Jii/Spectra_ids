@@ -8,6 +8,13 @@ from typing import Mapping
 import joblib
 import pandas as pd
 
+try:
+    from .dns_flow_features import aggregate_dns_packets
+    from .dns_pcap import iter_dns_packet_groups
+except ImportError:
+    from dns_flow_features import aggregate_dns_packets
+    from dns_pcap import iter_dns_packet_groups
+
 
 FEATURE_ORDER = [
     "Duration",
@@ -63,3 +70,21 @@ class DNSTunnellingDetector:
         evidence = {name: features.iloc[0][name] for name in FEATURE_ORDER}
         evidence["prediction"] = "Malicious DNS tunnel (1)" if alert else "Benign DoH (0)"
         return alert, confidence, evidence
+
+    def predict_packets(self, packets: list[Mapping[str, object]]) -> tuple[int, float, dict[str, object]]:
+        """Generate model fields from decoded, flow-scoped DNS packet metadata."""
+        result = self.predict(aggregate_dns_packets(packets))
+        result[2]["packet_count"] = len(packets)
+        result[2]["feature_generation"] = "dns_flow_features.aggregate_dns_packets"
+        return result
+
+    def predict_pcap(self, path: str | Path) -> list[tuple[int, float, dict[str, object]]]:
+        """Infer on each decoded classic-DNS client/resolver flow in a PCAP."""
+        outputs=[]
+        for packets in iter_dns_packet_groups(path):
+            prediction,probability,evidence=self.predict_packets(packets)
+            if packets:
+                evidence.update({k:packets[0][k] for k in ('client','resolver','client_port','resolver_port')})
+            evidence['capture']=Path(path).name
+            outputs.append((prediction,probability,evidence))
+        return outputs

@@ -1,0 +1,202 @@
+{
+  "capture": "D:\\Spectra_ids-main\\botnet_50 .2format",
+  "capture_sha256": "306ce0e7ec541012017a879223f8c3b970132767d6cddca60b2f7c465d3f3d9c",
+  "model": "D:\\Spectra_ids-main\\Spectra_ids-main\\detectors\\C2 Beaconing\\botnet_c2_detector.pkl",
+  "model_parameters": {
+    "bootstrap": true,
+    "ccp_alpha": 0.0,
+    "class_weight": "balanced",
+    "criterion": "gini",
+    "max_depth": 18,
+    "max_features": "sqrt",
+    "max_leaf_nodes": null,
+    "max_samples": null,
+    "min_impurity_decrease": 0.0,
+    "min_samples_leaf": 1,
+    "min_samples_split": 2,
+    "min_weight_fraction_leaf": 0.0,
+    "monotonic_cst": null,
+    "n_estimators": 150,
+    "n_jobs": -1,
+    "oob_score": false,
+    "random_state": 42,
+    "verbose": 0,
+    "warm_start": false
+  },
+  "window_count": 167294,
+  "threshold": 0.2,
+  "scores": {
+    "0.01": {
+      "accuracy": 0.10821069494422991,
+      "tn": 12523,
+      "fp": 148838,
+      "fn": 353,
+      "tp": 5580,
+      "false_positive_rate": 0.9223914080849772,
+      "malicious_recall": 0.9405022754087309
+    },
+    "0.05": {
+      "accuracy": 0.6248401018566118,
+      "tn": 99493,
+      "fp": 61868,
+      "fn": 894,
+      "tp": 5039,
+      "false_positive_rate": 0.3834135881656658,
+      "malicious_recall": 0.8493173773807517
+    },
+    "0.1": {
+      "accuracy": 0.9475773189713916,
+      "tn": 154051,
+      "fp": 7310,
+      "fn": 1460,
+      "tp": 4473,
+      "false_positive_rate": 0.045302148598484145,
+      "malicious_recall": 0.7539187594808697
+    },
+    "0.2": {
+      "accuracy": 0.9748347221059931,
+      "tn": 160525,
+      "fp": 836,
+      "fn": 3374,
+      "tp": 2559,
+      "false_positive_rate": 0.005180929716598187,
+      "malicious_recall": 0.43131636608798246
+    },
+    "0.3": {
+      "accuracy": 0.9692636914653245,
+      "tn": 161066,
+      "fp": 295,
+      "fn": 4847,
+      "tp": 1086,
+      "false_positive_rate": 0.0018281988832493602,
+      "malicious_recall": 0.18304399123546267
+    },
+    "0.5": {
+      "accuracy": 0.9655636185398161,
+      "tn": 161343,
+      "fp": 18,
+      "fn": 5743,
+      "tp": 190,
+      "false_positive_rate": 0.00011155111829996096,
+      "malicious_recall": 0.03202427102646216
+    }
+  },
+  "top_features": [
+    [
+      "Dur",
+      0.23118596558805143
+    ],
+    [
+      "IAT",
+      0.12820914814573958
+    ],
+    [
+      "IAT_Variance",
+      0.11943754894415813
+    ],
+    [
+      "Bytes_Per_Packet",
+      0.11051784176190897
+    ],
+    [
+      "Bytes",
+      0.10145845055222283
+    ],
+    [
+      "IAT_Std",
+      0.0992622472259507
+    ],
+    [
+      "Bytes_Variance",
+      0.09465158115204142
+    ],
+    [
+      "Pkts",
+      0.061795932691253684
+    ],
+    [
+      "FlowDir_Reverse",
+      0.028344085108153325
+    ],
+    [
+      "Proto_tcp",
+      0.012513794293656568
+    ],
+    [
+      "Proto_udp",
+      0.011175653765976033
+    ],
+    [
+      "Proto_icmp",
+      0.0013366396885741596
+    ],
+    [
+      "Proto_rtp",
+      5.3466118581455256e-05
+    ],
+    [
+      "Proto_rtcp",
+      4.4812062676075115e-05
+    ],
+    [
+      "Proto_igmp",
+      1.1754082663195085e-05
+    ],
+    [
+      "Proto_ipv6-icmp",
+      5.101321708315673e-07
+    ],
+    [
+      "Proto_udt",
+      3.5516683571907086e-07
+    ],
+    [
+      "Proto_ipx/spx",
+      1.561507506848276e-07
+    ],
+    [
+      "Proto_unas",
+      3.611544656895842e-08
+    ],
+    [
+      "Proto_esp",
+      2.0046535555723336e-08
+    ],
+    [
+      "Proto_ipv6",
+      1.2066531533941433e-09
+    ],
+    [
+      "Proto_pim",
+      0.0
+    ],
+    [
+      "Proto_rarp",
+      0.0
+    ]
+  ],
+  "roc_auc": 0.8642977705487338,
+  "false_negative_indices_first20": [
+    22318,
+    22319,
+    22320,
+    22321,
+    22322,
+    22324,
+    22325,
+    22328,
+    22329,
+    22330,
+    22331,
+    22332,
+    22333,
+    22337,
+    22338,
+    22340,
+    22341,
+    22343,
+    22344,
+    22345
+  ],
+  "note": "Inference-only validation; no fitting or threshold selection is performed."
+}

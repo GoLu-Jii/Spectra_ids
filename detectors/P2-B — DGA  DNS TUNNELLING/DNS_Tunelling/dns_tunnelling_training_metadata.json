@@ -1,0 +1,52 @@
+{
+  "model": "XGBClassifier",
+  "model_version": "2.0.0-rebuilt",
+  "detector_version": "2.0.0",
+  "feature_order": [
+    "Duration",
+    "FlowBytesSent",
+    "FlowSentRate",
+    "FlowBytesReceived",
+    "FlowReceivedRate",
+    "PacketLengthVariance",
+    "PacketLengthStandardDeviation",
+    "PacketLengthMean",
+    "PacketLengthMedian",
+    "PacketLengthMode",
+    "PacketLengthSkewFromMedian",
+    "PacketLengthSkewFromMode",
+    "PacketLengthCoefficientofVariation",
+    "PacketTimeVariance",
+    "PacketTimeStandardDeviation",
+    "PacketTimeMean",
+    "PacketTimeMedian",
+    "PacketTimeMode",
+    "PacketTimeSkewFromMedian",
+    "PacketTimeSkewFromMode",
+    "PacketTimeCoefficientofVariation",
+    "ResponseTimeTimeVariance",
+    "ResponseTimeTimeStandardDeviation",
+    "ResponseTimeTimeMean",
+    "ResponseTimeTimeMedian",
+    "ResponseTimeTimeMode",
+    "ResponseTimeTimeSkewFromMedian",
+    "ResponseTimeTimeSkewFromMode",
+    "ResponseTimeTimeCoefficientofVariation"
+  ],
+  "threshold": 0.5,
+  "training_files": {
+    "l2-benign.csv": "f5a96b741f1a2eeed65fe8f909c062205067a11ec0d2a2a0943e7748aa5191ff",
+    "l2-malicious.csv": "fcee1ecf8c73ae144565f934c1aedfff40b9d99ad7ddde9c7a764c7e9bd772fa"
+  },
+  "training_rows": 215714,
+  "holdout_rows": 53929,
+  "holdout_accuracy": 0.9999629142020063,
+  "holdout_roc_auc": 0.9999999494753643,
+  "artifact_sha256": "7cb170f0d34a9575fc5b52a6f98877952a94b17ef88856d1e0edbb6ce7ceaf6a",
+  "runtime": {
+    "python": "3.10+",
+    "xgboost": "3.4.1",
+    "pandas": "3.0.6",
+    "joblib": "1.6.0"
+  }
+}

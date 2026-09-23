@@ -1,0 +1,16 @@
+{
+  "detector": "DGA domain lexical preprocessing",
+  "detector_version": "1.1.0",
+  "classifier_model_version": "unverified-corrupt-artifact",
+  "model_artifact": "DGA_XGBoost.pkl",
+  "model_artifact_bytes": 6699287,
+  "feature_order_base": ["len_full", "len_sld", "entropy", "tld_len", "high_risk_tld", "cv_ratio", "digit_ratio", "dict_match_ratio"],
+  "lexical_resource": "lexical_resources/english_words.txt",
+  "lexical_resource_metadata": "lexical_resources/metadata.json",
+  "tfidf_contract": {"analyzer": "char", "ngram_range": [2, 2], "max_features": 15, "lowercase": true, "fitted_vectorizer_saved": false},
+  "full_expected_feature_count": 23,
+  "threshold": 0.68,
+  "threshold_source": "DGA notebook output: selected optimal threshold 0.68",
+  "runtime_semantics": "Normalize domain by strip/lowercase; SLD is substring before first dot; compute 8 lexical features, then append the 15 fitted bigram columns in vectorizer order.",
+  "blocker": "The saved classifier fails XGBoost deserialization, and the fitted TF-IDF vectorizer is absent. Lexical features work; prediction does not."
+}
