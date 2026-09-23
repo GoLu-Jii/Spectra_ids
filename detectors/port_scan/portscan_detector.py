@@ -18,6 +18,10 @@ It only:
 The decision threshold (0.50166595) was derived from the trained
 model_ps2 by finding the probability cutoff that exactly reproduces
 model_ps2.predict() on the notebook test set.
+
+The model is stored using XGBoost's native model serialization format
+to avoid Python/joblib serialization compatibility issues across
+runtime environments.
 """
 
 from __future__ import annotations
@@ -26,13 +30,13 @@ import json
 from pathlib import Path
 from typing import Any, Mapping
 
-import joblib
 import numpy as np
 import pandas as pd
+import xgboost as xgb
 
 
 BASE_DIR = Path(__file__).resolve().parent
-MODEL_PATH = BASE_DIR / "spectra_portscan_detector.joblib"
+MODEL_PATH = BASE_DIR / "spectra_portscan_detector.json"
 SCHEMA_PATH = BASE_DIR / "spectra_portscan_feature_schema.json"
 
 # Model-native decision threshold reproduced from model_ps2.predict().
@@ -86,10 +90,10 @@ class PortScanDetector:
                 f"PortScan feature schema not found: {self.schema_path}"
             )
 
-        artifact = joblib.load(self.model_path)
-
-        # Support a directly saved XGBoost model, as used by the notebook.
-        self.model = artifact["model"] if isinstance(artifact, dict) and "model" in artifact else artifact
+        # Load the trained XGBoost model using XGBoost's native
+        # serialization format.
+        self.model = xgb.XGBClassifier()
+        self.model.load_model(self.model_path)
 
         with self.schema_path.open("r", encoding="utf-8") as f:
             self.feature_schema = json.load(f)
@@ -114,7 +118,8 @@ class PortScanDetector:
         model consumes these eight CIC-IDS2017 columns directly.
         """
         missing = [
-            col for col in REQUIRED_INPUT_COLUMNS
+            col
+            for col in REQUIRED_INPUT_COLUMNS
             if col not in flow_df.columns
         ]
 
@@ -128,7 +133,10 @@ class PortScanDetector:
 
         # Match the notebook's numerical handling.
         for col in FINAL_FEATURES:
-            features[col] = pd.to_numeric(features[col], errors="raise")
+            features[col] = pd.to_numeric(
+                features[col],
+                errors="raise",
+            )
 
         features = features.replace(
             [np.inf, -np.inf],
@@ -189,7 +197,9 @@ class PortScanDetector:
             results.append(
                 {
                     "status": "DETECTED" if detected else "BENIGN",
-                    "threat_class": "PortScan" if detected else "Benign",
+                    "threat_class": (
+                        "PortScan" if detected else "Benign"
+                    ),
                     "score_type": "model_score",
                     "raw_score": float(score),
                     "threshold": PORTSCAN_THRESHOLD,
