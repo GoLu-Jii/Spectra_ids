@@ -1,0 +1,8 @@
+{
+  "resource": "NLTK words corpus",
+  "filter": "lowercase, unique, word length 4 through 15",
+  "entries": 226114,
+  "sha256": "21b469743cddc00b117751bab97104d06959a99bdc0d4d506694e8e56a819a39",
+  "nltk_version": "3.10.3",
+  "runtime_file": "english_words.txt"
+}

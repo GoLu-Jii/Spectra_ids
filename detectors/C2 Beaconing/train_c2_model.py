@@ -1,4 +1,6 @@
 import os
+import argparse
+from pathlib import Path
 import joblib
 import numpy as np
 import pandas as pd
@@ -51,7 +53,10 @@ def _first_column(df, names, default):
 def prepare_dataset(file_path, window_duration_seconds=300):
     """Parses CTU-13 NetFlow logs and aggregates them into rolling conversational windows."""
     print(f"[*] Ingesting: {file_path}")
-    df = pd.read_csv(file_path)
+    required = {"StartTime", "StartTimeUnix", "Proto", "Protocol", "proto", "protocol",
+                "SrcAddr", "DstAddr", "Bytes", "TotBytes", "bytes", "Pkts", "TotPkts",
+                "pkts", "FlowDir_Reverse", "flow_dir_reverse", "Label"}
+    df = pd.read_csv(file_path, usecols=lambda column: column.strip() in required)
 
     # Clean whitespace in column headers
     df.columns = [c.strip() for c in df.columns]
@@ -102,9 +107,14 @@ def prepare_dataset(file_path, window_duration_seconds=300):
     y = np.array(labels, dtype=np.int32)
     return X, y
 
-def main():
-    train_path = "/content/drive/MyDrive/Hackathon_Data/botnet_42.2format"
-    val_path   = "/content/drive/MyDrive/Hackathon_Data/botnet_50.2format"
+def main(argv=None):
+    workspace = Path(__file__).resolve().parents[3]
+    parser = argparse.ArgumentParser(description="Train/evaluate C2 from the project's two documented input files")
+    parser.add_argument("--train-file", type=Path, default=workspace / "botnet_42.2format")
+    parser.add_argument("--validation-file", type=Path, default=workspace / "botnet_50 .2format")
+    args = parser.parse_args(argv)
+    train_path = str(args.train_file)
+    val_path = str(args.validation_file)
 
     # Step 1: Feature Extraction
     print("--- Phase 1: Feature Extraction ---")
@@ -149,7 +159,7 @@ def main():
         print(f"  - {col:<20}: {imp:.4f}")
 
     # Step 4: Export Artifact
-    artifact_path = "botnet_c2_detector.pkl"
+    artifact_path = str(Path(__file__).with_name("botnet_c2_detector.pkl"))
     joblib.dump(rf_model, artifact_path)
     print(f"\n[+] Successfully serialized Random Forest model to: {artifact_path}")
 

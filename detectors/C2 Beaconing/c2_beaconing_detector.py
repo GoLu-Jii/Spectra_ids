@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Mapping
+import gzip
 
 import joblib
 import numpy as np
@@ -25,7 +26,13 @@ class C2BeaconingDetector:
 
     def __init__(self, model_path: str | Path | None = None, threshold: float = 0.20) -> None:
         artifact_path = Path(model_path) if model_path else Path(__file__).with_name("botnet_c2_detector.pkl")
-        self.model = joblib.load(artifact_path)
+        if not artifact_path.is_file() and model_path is None:
+            artifact_path = artifact_path.with_suffix(artifact_path.suffix + ".gz")
+        if artifact_path.suffix == ".gz":
+            with gzip.open(artifact_path, "rb") as stream:
+                self.model = joblib.load(stream)
+        else:
+            self.model = joblib.load(artifact_path)
         self.threshold = threshold
         model_features = list(getattr(self.model, "feature_names_in_", []))
         if getattr(self.model, "n_features_in_", None) != len(FEATURE_ORDER):

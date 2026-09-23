@@ -1,6 +1,6 @@
 {
     "model_name": "dns_tunnel_xgb",
-    "version": "1.0",
+    "version": "2.0.0",
     "dataset": "CIC-DoHBrw-2020 Layer 2",
     "threat_class": "DNS_TUNNELLING",
     "classification_threshold": 0.5,

@@ -1,0 +1,10 @@
+# ML handoff checklist
+
+Detailed contracts and remaining blockers are in `ML_DETECTOR_HANDOFF_BLOCKERS.md` and each detector's `P3_INTEGRATION_HANDOVER.md`.
+
+| Detector | Artifact / schema / runtime | Preprocessing and inference | Threshold / version / packages | Fixtures / output / state | Status |
+|---|---|---|---|---|---|
+| C2 | Gzipped Random Forest artifact; 23 ordered features; scikit-learn 1.6.1 | 300-second source/destination windows, 150-second stride; inference wrapper and evidence | 0.20; artifact version unversioned; requirements pinned | Capture-52 examples; 50-file inference report has 167,294 windows; no state beyond each flow window | Loads; 50-file recall 43.13% at 0.20; threshold not changed; not retrained |
+| DGA | 6.7 MB classifier fails deserialization; fitted vectorizer absent; NLTK word list now bundled | Eight base lexical features and explicit `predict_lexical_fallback()` rule path | Trained-model threshold 0.68; fallback threshold 0.60 is an uncalibrated rule score | Benign and suspicious fallback examples with feature evidence | Heuristic triage can run; trained-model inference remains blocked and fallback accuracy is unvalidated |
+| DNS tunnelling | Rebuilt XGBoost model; exact 29-feature order; requirements pinned | Labeled CSV trainer; PCAP/PCAPNG parser for classic DNS, with UDP response matching | 0.50; model/detector 2.0.0 | Held-out benign and malicious fixtures; synthetic classic-DNS PCAP smoke check; one client/resolver tuple per score | Works for classic DNS; no project PCAP validation; DoH/TCP reassembly and training-flow grouping need confirmation |
+| Exfiltration | Rebuilt XGBoost model; exact 10-feature order from 27 input columns | Capture-split training and causal context adapter | Persisted validation-selected threshold; model/detector 2.0.0 | Held-out benign and suspicious fixtures; class/probability/evidence; prior 20 rows, reset at capture boundary | Stateful feature-row inference works; raw-PCAP feature generator absent |

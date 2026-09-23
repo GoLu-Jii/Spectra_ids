@@ -1,0 +1,85 @@
+[
+  {
+    "case": "benign",
+    "label": 0,
+    "domain": "google.com",
+    "base_features": {
+      "len_full": 10.0,
+      "len_sld": 6.0,
+      "entropy": 1.9182958340544896,
+      "tld_len": 3.0,
+      "high_risk_tld": 0.0,
+      "cv_ratio": 1.0,
+      "digit_ratio": 0.0,
+      "dict_match_ratio": 0.6666666666666666
+    },
+    "classifier_prediction_available": false,
+    "reason": "Explicit heuristic fallback only; trained classifier and fitted TF-IDF vectorizer are unavailable.",
+    "fallback_inference": {
+      "domain": "google.com",
+      "prediction": 0,
+      "label": "no_strong_lexical_signal",
+      "detector_mode": "lexical_heuristic_fallback",
+      "risk_score": 0,
+      "threshold": 0.6,
+      "calibrated_probability": null,
+      "base_features": {
+        "len_full": 10.0,
+        "len_sld": 6.0,
+        "entropy": 1.9182958340544896,
+        "tld_len": 3.0,
+        "high_risk_tld": 0.0,
+        "cv_ratio": 1.0,
+        "digit_ratio": 0.0,
+        "dict_match_ratio": 0.6666666666666666
+      },
+      "matched_signals": [],
+      "evidence_note": "Rule-based triage only; not a trained DGA model prediction."
+    }
+  },
+  {
+    "case": "suspicious",
+    "label": 1,
+    "domain": "xj9q2m4v7k.example.xyz",
+    "base_features": {
+      "len_full": 22.0,
+      "len_sld": 10.0,
+      "entropy": 3.3219280948873626,
+      "tld_len": 3.0,
+      "high_risk_tld": 1.0,
+      "cv_ratio": 6.0,
+      "digit_ratio": 0.4,
+      "dict_match_ratio": 0.0
+    },
+    "classifier_prediction_available": false,
+    "reason": "Explicit heuristic fallback only; trained classifier and fitted TF-IDF vectorizer are unavailable.",
+    "fallback_inference": {
+      "domain": "xj9q2m4v7k.example.xyz",
+      "prediction": 1,
+      "label": "suspicious_lexical_pattern",
+      "detector_mode": "lexical_heuristic_fallback",
+      "risk_score": 1.0,
+      "threshold": 0.6,
+      "calibrated_probability": null,
+      "base_features": {
+        "len_full": 22.0,
+        "len_sld": 10.0,
+        "entropy": 3.3219280948873626,
+        "tld_len": 3.0,
+        "high_risk_tld": 1.0,
+        "cv_ratio": 6.0,
+        "digit_ratio": 0.4,
+        "dict_match_ratio": 0.0
+      },
+      "matched_signals": [
+        "high_entropy",
+        "many_digits",
+        "few_dictionary_matches",
+        "long_sld",
+        "high_consonant_vowel_ratio",
+        "high_risk_tld"
+      ],
+      "evidence_note": "Rule-based triage only; not a trained DGA model prediction."
+    }
+  }
+]
