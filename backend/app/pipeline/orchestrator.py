@@ -1,14 +1,18 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from hashlib import sha256
+from time import monotonic
 from typing import Any, Mapping
 
 from ..detectors.base import BaseThreatDetector
 from ..detectors.health import DetectorHealth
 from ..ingestion.events import NormalizedEvent
+from ..latency import LatencyMetricsCollector, LatencyTiming
 from ..schemas.alert import Alert
 from ..schemas.prediction import Prediction
+from ..stores import AlertStore
 from .ordering import ReorderBuffer, ReorderOutcome
 from .windows import DetectorWindowManager, WindowEmission
 
@@ -38,16 +42,21 @@ class RuntimeOrchestrator:
         windows: DetectorWindowManager,
         registry: Any,
         health: Mapping[str, DetectorHealth] | None = None,
+        alert_store: AlertStore | None = None,
+        latency_metrics: LatencyMetricsCollector | None = None,
     ) -> None:
         self.ordering = ordering
         self.windows = windows
         self.registry = registry
         self.health = dict(health or {})
+        self.alert_store = alert_store
+        self.latency_metrics = latency_metrics or LatencyMetricsCollector()
         self.metrics = OrchestratorMetrics()
         self._runtime_failures: list[DetectorRuntimeFailure] = []
         self._scored_opportunities: set[
             tuple[str, Any, object, object, tuple[Any, ...]]
         ] = set()
+        self._timings: dict[str, LatencyTiming] = {}
 
     def process_event(
         self,
@@ -56,6 +65,11 @@ class RuntimeOrchestrator:
     ) -> tuple[Alert, ...]:
         """Accept one canonical event and return newly produced alerts."""
         self.metrics.events_received += 1
+        timing = LatencyTiming.start(event.observed_at)
+        identity = event_id or event.flow_id or f"received-{self.metrics.events_received}"
+        self._timings[identity] = timing
+        if event.flow_id is not None:
+            self._timings[event.flow_id] = timing
         try:
             outcome = self.ordering.push(event, event_id=event_id)
         except Exception as exc:
@@ -109,6 +123,9 @@ class RuntimeOrchestrator:
 
     def _process_ordered(self, event: NormalizedEvent, event_id: str) -> list[Alert]:
         self.metrics.events_processed += 1
+        timing = self._timing_for_event(event)
+        if timing is not None:
+            timing.mark("ordered_at")
         alerts: list[Alert] = []
         grouping_key = self._grouping_key(event)
         for detector_name in list(self.registry):
@@ -180,14 +197,22 @@ class RuntimeOrchestrator:
             "scoring_end": emission.scoring_end,
             "context_event_count": len(emission.context_events),
         }
+        timing = self._timing_for_event(source_event)
+        if timing is not None:
+            timing.mark("feature_ready_at")
+            timing.mark("inference_started_at")
         try:
             self.metrics.detector_invocations += 1
             prediction = detector.predict(dict(source_event.raw_metadata), context)
             if not isinstance(prediction, Prediction):
                 raise TypeError("adapter did not return Prediction")
         except Exception as exc:
+            if timing is not None:
+                timing.mark("inference_finished_at")
             self._record_failure(emission.detector_name, f"Detector invocation failed: {exc}")
             return []
+        if timing is not None:
+            timing.mark("inference_finished_at")
         if prediction.status != "DETECTED":
             return []
         try:
@@ -196,6 +221,17 @@ class RuntimeOrchestrator:
             self._record_failure(emission.detector_name, f"Alert conversion failed: {exc}")
             return []
         self.metrics.alerts_produced += 1
+        timing = self._timing_for_event(source_event)
+        if timing is not None:
+            timing.mark("alert_created_at")
+            alert.timing = timing.model_dump()
+            alert.latency_durations = timing.durations()
+            self.latency_metrics.record(timing)
+        if self.alert_store is not None:
+            try:
+                self.alert_store.create(alert)
+            except Exception as exc:
+                self._record_failure(emission.detector_name, f"Alert store failed: {exc}")
         return [alert]
 
     def _prediction_to_alert(
@@ -237,7 +273,12 @@ class RuntimeOrchestrator:
             model_version=prediction.model_version,
             feature_schema=prediction.feature_schema,
             raw_model_probability=confidence,
+            timing=None,
+            latency_durations={},
         )
+
+    def _timing_for_event(self, event: NormalizedEvent) -> LatencyTiming | None:
+        return self._timings.get(event.flow_id) if event.flow_id is not None else None
 
     def _grouping_key(self, event: NormalizedEvent) -> tuple[Any, ...]:
         return (

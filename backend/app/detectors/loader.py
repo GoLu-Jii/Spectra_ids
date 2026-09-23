@@ -192,6 +192,12 @@ class DetectorLoader:
         if expected_format == "pickle":
             with path.open("rb") as stream:
                 return pickle.load(stream)
+        if expected_format == "json":
+            from xgboost import XGBClassifier
+
+            model = XGBClassifier()
+            model.load_model(path)
+            return model
         raise ValueError(f"Unsupported artifact format: {expected_format!r}")
 
     def _check_dependencies(self, config: DetectorConfig) -> tuple[bool, str | None]:

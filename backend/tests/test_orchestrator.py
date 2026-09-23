@@ -5,9 +5,11 @@ from backend.app.detectors.adapter import DetectorAdapter
 from backend.app.detectors.health import DetectorHealth
 from backend.app.detectors.registry import DetectorRegistry
 from backend.app.ingestion.events import NormalizedEvent
+from backend.app.latency import LatencyMetricsCollector
 from backend.app.pipeline.ordering import ReorderBuffer, ReorderConfig
 from backend.app.pipeline.orchestrator import RuntimeOrchestrator
 from backend.app.pipeline.windows import DetectorWindowManager, WindowConfig
+from backend.app.stores import AlertStore
 
 BASE = datetime(2026, 9, 23, 12, tzinfo=timezone.utc)
 
@@ -231,3 +233,29 @@ def test_missing_declared_input_is_skipped_without_feature_invention():
     assert implementation.calls == 0
     failures = orchestrator.get_runtime_state()["runtime_failures"]
     assert "missing required detector inputs" in failures[-1]["reason"]
+
+
+def test_orchestrator_stores_alert_and_preserves_timing_lineage():
+    name = "stored_detector"
+    registry = DetectorRegistry()
+    registry.register(DetectorAdapter(DetectingImplementation(), config(name)))
+    store = AlertStore()
+    latency = LatencyMetricsCollector()
+    orchestrator = RuntimeOrchestrator(
+        ReorderBuffer(ReorderConfig(timedelta(seconds=0), 20)),
+        DetectorWindowManager(WindowConfig(timedelta(seconds=30), timedelta(seconds=1))),
+        registry,
+        {name: health(name)},
+        alert_store=store,
+        latency_metrics=latency,
+    )
+
+    orchestrator.process_event(event(0, "flow-1"))
+    returned = orchestrator.process_event(event(1, "flow-2"))[0]
+
+    stored = store.get(returned.alert_id)
+    assert stored == returned
+    assert returned.timing["observed_at"] == BASE + timedelta(seconds=1)
+    assert returned.timing["alert_created_at"].tzinfo == timezone.utc
+    assert "capture_to_alert" in returned.latency_durations
+    assert latency.summary("capture_to_alert")["count"] == 1

@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
-ExpectedArtifactFormat = Literal["joblib", "pickle", "gzip+joblib"]
+ExpectedArtifactFormat = Literal["joblib", "pickle", "gzip+joblib", "json"]
 
 
 @dataclass(frozen=True)
@@ -128,8 +128,8 @@ DETECTOR_CONFIGS: dict[str, DetectorConfig] = {
         ),
         threshold=0.50166595,
         score_type="probability",
-        artifact_path="detectors/port_scan/spectra_portscan_detector.joblib",
-        expected_format="joblib",
+        artifact_path="detectors/port_scan/spectra_portscan_detector.json",
+        expected_format="json",
         dependencies=(("joblib", ">=1.4.0"), ("xgboost", ">=2.0.0")),
         handoff_status="READY FOR BACKEND INTEGRATION",
     ),

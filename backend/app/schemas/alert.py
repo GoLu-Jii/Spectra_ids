@@ -32,3 +32,5 @@ class Alert(BaseModel):
     status: AlertStatus = "NEW"
     raw_model_probability: float | None = Field(default=None, ge=0.0, le=1.0)
     calibrated_confidence: float | None = Field(default=None, ge=0.0, le=1.0)
+    timing: dict[str, datetime | None] | None = None
+    latency_durations: dict[str, float] = Field(default_factory=dict)
