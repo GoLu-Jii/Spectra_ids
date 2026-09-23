@@ -1,0 +1,15 @@
+{
+  "Flow Packets/s": 80000.0,
+  "Flow Bytes/s": 40000000.0,
+  "Flow Duration": 500,
+  "Total Fwd Packets": 500,
+  "Total Backward Packets": 0,
+  "Fwd Packets Length Total": 250000,
+  "Bwd Packets Length Total": 0,
+  "SYN Flag Count": 10,
+  "RST Flag Count": 0,
+  "ACK Flag Count": 10,
+  "Packet Length Mean": 500.0,
+  "Packet Length Std": 0.0,
+  "Protocol": 17
+}

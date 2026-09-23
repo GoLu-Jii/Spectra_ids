@@ -489,3 +489,26 @@ detectors/ddos/
 This document describes the **current deployable DDoS detector
 contract**. The Kaggle notebook remains the development/training record
 and is not required for runtime inference.
+
+------------------------------------------------------------------------
+
+## 12. Backend Handoff Verification Checklist
+
+| # | Handoff Requirement | Status / Verification Result |
+|---|---|---|
+| 1 | Exact Model Artifact | `detectors/ddos/spectra_ddos_detector.joblib` (XGBClassifier bundle) verified loadable. |
+| 2 | Exact Feature Schema/Order | `detectors/ddos/spectra_ddos_feature_schema.json` defines 12 features in exact frozen order. |
+| 3 | Preprocessing/Auxiliary Artifacts | Derived feature engineering in `ddos_detector.py` (`build_features`), NaN/Inf clean-up, EPS (1e-9). |
+| 4 | Runtime Feature Semantics | 13 raw input columns (`REQUIRED_INPUT_COLUMNS`) mapped to 12 final XGBoost features. |
+| 5 | Threshold / Decision Rule | `0.139203` stored in joblib artifact and enforced in runtime prediction. |
+| 6 | Model + Detector Version | Detector version `1.0`, Model version `1.0` (XGBoost). |
+| 7 | Runtime Requirements | Python 3.10+, `joblib>=1.4.0`, `xgboost>=2.0.0`, `pandas>=2.0.0`, `numpy>=1.24.0`. Tested with Python 3.11.9, XGBoost 3.2.0, Joblib 1.6.0. |
+| 8 | Valid Inference Example | `DDoSDetector().predict_flow(flow)` returns standard prediction dictionary. |
+| 9 | Benign Test Case | `tests/fixtures/ddos/benign_flow.json` (Score < 0.139203, Status: `BENIGN`). |
+| 10 | Suspicious/Attack Test Case | `tests/fixtures/ddos/attack_flow.json` (Score >= 0.139203, Status: `DETECTED`, Threat: `DDoS`). |
+| 11 | Output / Evidence Format | Standardized dictionary containing `status`, `threat_class`, `score_type`, `raw_score`, `threshold`, `evidence`, `context`, `detector_name`, `detector_version`, `model_name`, `model_version`, `feature_schema`. |
+| 12 | State / Window Semantics | Stateless per-flow evaluation. No rolling temporal window required for model inference. |
+
+### Integration Verification Status: **VERIFIED & READY FOR BACKEND INTEGRATION**
+- Automated Test Suite: `tests/test_ddos_detector.py` (5/5 tests passed).
+

@@ -1,0 +1,10 @@
+{
+  "Destination Port": 8080,
+  "Flow Duration": 10,
+  "Total Fwd Packets": 1,
+  "Total Backward Packets": 1,
+  "Flow Packets/s": 199980.0,
+  "Fwd Packets/s": 99990.0,
+  "Bwd Packets/s": 99990.0,
+  "FIN Flag Count": 0
+}

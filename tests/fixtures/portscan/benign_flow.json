@@ -1,0 +1,10 @@
+{
+  "Destination Port": 443,
+  "Flow Duration": 3500000,
+  "Total Fwd Packets": 10,
+  "Total Backward Packets": 12,
+  "Flow Packets/s": 6.28,
+  "Fwd Packets/s": 2.85,
+  "Bwd Packets/s": 3.42,
+  "FIN Flag Count": 1
+}
