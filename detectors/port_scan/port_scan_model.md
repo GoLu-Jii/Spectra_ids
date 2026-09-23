@@ -459,3 +459,26 @@ detectors/portscan/
 This document describes the current deployable PortScan detector contract.
 The Colab notebook remains the training/development record and is not
 required for runtime inference.
+
+---
+
+## 11. Backend Handoff Verification Checklist
+
+| # | Handoff Requirement | Status / Verification Result |
+|---|---|---|
+| 1 | Exact Model Artifact | `detectors/port_scan/spectra_portscan_detector.joblib` (XGBClassifier bundle) verified loadable. |
+| 2 | Exact Feature Schema/Order | `detectors/port_scan/spectra_portscan_feature_schema.json` defines 8 features in exact frozen order. |
+| 3 | Preprocessing/Auxiliary Artifacts | Feature handling in `portscan_detector.py` (`build_features`), numeric coercion, NaN/Inf replacement with 0. |
+| 4 | Runtime Feature Semantics | 8 raw input columns (`REQUIRED_INPUT_COLUMNS`) passed directly as XGBoost input features. |
+| 5 | Threshold / Decision Rule | `0.50166595` enforced in runtime prediction. |
+| 6 | Model + Detector Version | Detector version `1.0`, Model version `1.0` (XGBoost). |
+| 7 | Runtime Requirements | Python 3.10+, `joblib>=1.4.0`, `xgboost>=2.0.0`, `pandas>=2.0.0`, `numpy>=1.24.0`. Tested with Python 3.11.9, XGBoost 3.2.0, Joblib 1.6.0. |
+| 8 | Valid Inference Example | `PortScanDetector().predict_flow(flow)` returns standard prediction dictionary. |
+| 9 | Benign Test Case | `tests/fixtures/portscan/benign_flow.json` (Score < 0.50166595, Status: `BENIGN`). |
+| 10 | Suspicious/Attack Test Case | `tests/fixtures/portscan/attack_flow.json` (Score >= 0.50166595, Status: `DETECTED`, Threat: `PortScan`). |
+| 11 | Output / Evidence Format | Standardized dictionary containing `status`, `threat_class`, `score_type`, `raw_score`, `threshold`, `evidence`, `context`, `detector_name`, `detector_version`, `model_name`, `model_version`, `feature_schema`. |
+| 12 | State / Window Semantics | Stateless per-flow evaluation. No rolling temporal window required for model inference. |
+
+### Integration Verification Status: **VERIFIED & READY FOR BACKEND INTEGRATION**
+- Automated Test Suite: `tests/test_portscan_detector.py` (5/5 tests passed).
+

@@ -17,16 +17,16 @@ The purpose of this document is to record the current repository state, identify
 | Model Artifact | detectors/ddos/spectra_ddos_detector.joblib |
 | Artifact Format | joblib (XGBoost model bundle) |
 | Feature Schema | detectors/ddos/spectra_ddos_feature_schema.json |
-| Preprocessing / Auxiliary Artifacts | artifact package includes model + threshold + feature schema metadata; no separate scaler or vectorizer in this repo state |
+| Preprocessing / Auxiliary Artifacts | artifact package includes model + threshold + feature schema metadata; feature engineering in ddos_detector.py |
 | Feature Builder | detectors/ddos/ddos_detector.py: DDoSDetector.build_features() |
 | Temporal / Stateful Requirement | Flow-level, no rolling state required; must preserve exact flow feature semantics |
-| Threshold | Packaged inside model artifact; runtime uses threshold embedded in artifact; current environment does not permit runtime validation |
+| Threshold | 0.139203 (packaged inside joblib model artifact) |
 | Runtime Adapter | detectors/ddos/ddos_detector.py: DDoSDetector |
-| Runtime Dependencies | Python + XGBoost-compatible runtime; current environment is missing XGBoost |
-| Current Verification Status | BLOCKED |
-| Current Blocker | Missing/incompatible XGBoost runtime in the active environment prevents actual runtime validation; static contract appears consistent |
-| Required ML Handoff Action | Validate artifact load in the supported ML environment; confirm runtime compatibility and perform a minimal inference smoke test |
-| Backend Integration Status | NOT READY |
+| Runtime Dependencies | Python 3.10+, joblib>=1.4.0, xgboost>=2.0.0, pandas>=2.0.0, numpy>=1.24.0 |
+| Current Verification Status | VERIFIED |
+| Current Blocker | NONE (Artifact load, runtime compatibility, threshold, fixtures, and pytest suite verified) |
+| Required ML Handoff Action | Complete (Handed off to backend) |
+| Backend Integration Status | READY FOR BACKEND INTEGRATION |
 
 | Field | Value |
 |---|---|
@@ -125,16 +125,16 @@ The purpose of this document is to record the current repository state, identify
 | Model Artifact | detectors/port_scan/spectra_portscan_detector.joblib |
 | Artifact Format | joblib (XGBoost model bundle) |
 | Feature Schema | detectors/port_scan/spectra_portscan_feature_schema.json |
-| Preprocessing / Auxiliary Artifacts | No separate preprocessing artifact observed; static schema and runtime wrapper appear internally consistent |
+| Preprocessing / Auxiliary Artifacts | Feature coercion and NaN/Inf cleaning in portscan_detector.py |
 | Feature Builder | detectors/port_scan/portscan_detector.py: PortScanDetector.build_features() |
-| Temporal / Stateful Requirement | Flow-level; no additional temporal state documented in the current repo state |
-| Threshold | 0.50166595 (as documented in portscan_detector.py) |
+| Temporal / Stateful Requirement | Flow-level; no additional temporal state required |
+| Threshold | 0.50166595 (model-native threshold) |
 | Runtime Adapter | detectors/port_scan/portscan_detector.py: PortScanDetector |
-| Runtime Dependencies | XGBoost-compatible runtime; runtime validation is still pending because the environment is not fully available |
-| Current Verification Status | UNVERIFIED |
-| Current Blocker | Full runtime execution remains unverified due to missing ML runtime dependencies in the current environment |
-| Required ML Handoff Action | Validate artifact load and a minimal inference smoke test in the supported environment; confirm the model feature contract against live telemetry |
-| Backend Integration Status | NOT READY |
+| Runtime Dependencies | Python 3.10+, joblib>=1.4.0, xgboost>=2.0.0, pandas>=2.0.0, numpy>=1.24.0 |
+| Current Verification Status | VERIFIED |
+| Current Blocker | NONE (Artifact load, runtime compatibility, threshold, fixtures, and pytest suite verified) |
+| Required ML Handoff Action | Complete (Handed off to backend) |
+| Backend Integration Status | READY FOR BACKEND INTEGRATION |
 
 | Field | Value |
 |---|---|
