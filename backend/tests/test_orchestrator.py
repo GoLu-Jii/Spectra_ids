@@ -96,6 +96,35 @@ def test_valid_event_reaches_ordering_windowing_and_ready_detector():
     assert orchestrator.get_metrics()["events_processed"] == 2
 
 
+def test_per_flow_mode_invokes_without_generic_window_context():
+    class PerFlowImplementation(DetectingImplementation):
+        def __init__(self):
+            super().__init__()
+            self.contexts = []
+
+        def predict(self, features, context):
+            self.calls += 1
+            self.contexts.append(context)
+            return {"status": "BENIGN"}
+
+    implementation = PerFlowImplementation()
+    name = "per_flow_detector"
+    registry = DetectorRegistry()
+    registry.register(DetectorAdapter(implementation, config(name)))
+    orchestrator = RuntimeOrchestrator(
+        ReorderBuffer(ReorderConfig(timedelta(seconds=0), 20)),
+        windows=None,
+        registry=registry,
+        health={name: health(name)},
+    )
+
+    orchestrator.process_event(event(0, "one"), event_id="conn.log:1")
+
+    assert implementation.calls == 1
+    assert implementation.contexts == [{"event_id": "one"}]
+    assert orchestrator.windows is None
+
+
 def test_unavailable_detector_is_not_invoked_and_reason_remains_observable():
     implementation = DetectingImplementation()
     name = "blocked_detector"

@@ -16,7 +16,7 @@ The ingestion runtime connects Zeek log files to the existing `normalize_zeek_re
 | `SPECTRA_TAIL_MAX_PENDING_LINE_BYTES` | `1048576` | Maximum retained incomplete record size |
 | `SPECTRA_FLUSH_ON_SHUTDOWN` | `true` | Flush pending orchestrator ordering/window state on shutdown |
 
-The runtime does not rebuild or replace the supplied orchestrator. Continue to set ordering buffer and window semantics according to the existing detector/runtime configuration.
+The runtime does not rebuild or replace the supplied orchestrator. Construct it with `backend.app.runtime_factory:create_orchestrator` and an explicit configuration; see [runtime configuration](RUNTIME_CONFIGURATION.md). The repository does not authorize defaults for ordering decisions. The integrated DDoS and Port Scan adapters use their per-flow contracts with generic windows disabled.
 
 LIVE begins at each already-existing file's current end so historical log content is not replayed into LIVE. A newly created selected log is read from its beginning. Complete records appended thereafter are processed incrementally. Partial final lines are held until completed; oversized partial lines are discarded and counted. Rotation is detected by file identity/size and the replacement file is read from its beginning. The existing Zeek parser handles JSON-lines and Zeek TSV `#fields` logs. The selected filename supplies the event type for records that do not carry one explicitly.
 
@@ -45,12 +45,14 @@ The production sensor is a Linux monitoring host. Obtain traffic from an approve
    ```python
    from backend.app.config.runtime import RuntimeConfig
    from backend.app.main import app, configure_zeek_runtime
+   from backend.app.runtime_factory import create_orchestrator
 
-   orchestrator = create_approved_runtime_orchestrator()  # existing deployment configuration
+   owner_approved_orchestrator_config = load_owner_approved_orchestrator_config()
+   orchestrator = create_orchestrator(owner_approved_orchestrator_config)
    configure_zeek_runtime(orchestrator, RuntimeConfig.from_env())
    ```
 
-   Run that configured ASGI application with the deployment's process manager (for example, Uvicorn). The `create_approved_runtime_orchestrator()` function represents the site's existing detector, ordering and window configuration; Task 10 does not invent those detector semantics.
+   Run that configured ASGI application with the deployment's process manager (for example, Uvicorn). Do not launch with unapproved or test-only ordering values. The factory fails when required fields are missing or when the integrated models are not ready.
 4. Verify `GET /health` reports the selected runtime mode, `zeek_runtime.running: true`, source availability and consumed filenames. Verify `/stats` counters advance when Zeek writes records. Connect the dashboard or a WebSocket client to `/ws` and confirm only alerts produced by the configured detectors arrive.
 5. On shutdown, the runtime task is cancelled, pending orchestrator state is flushed, and WebSocket sender tasks are closed.
 

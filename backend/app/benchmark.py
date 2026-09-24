@@ -71,7 +71,12 @@ def run_replay_benchmark(
         "replay_rate": "unpaced",
         "log_files": list(log_files),
         "ordering": repr(orchestrator.ordering.config),
-        "windows": repr(orchestrator.windows.config),
+        "windows": (
+            repr(orchestrator.windows.config)
+            if orchestrator.windows is not None
+            else None
+        ),
+        "runtime_configuration": getattr(orchestrator, "runtime_configuration", None),
         "models": models,
     }
     config_id = hashlib.sha256(
@@ -358,12 +363,12 @@ def _memory_snapshot() -> dict[str, int | None]:
     return {"current_bytes": None, "process_peak_bytes": None}
 
 
-def _load_factory(specification: str) -> Any:
+def _load_factory(specification: str, configuration: dict[str, object]) -> Any:
     module_name, separator, attribute = specification.partition(":")
     if not separator or not module_name or not attribute:
         raise ValueError("Orchestrator factory must use module:function syntax")
     factory = getattr(importlib.import_module(module_name), attribute)
-    orchestrator = factory()
+    orchestrator = factory(configuration)
     return orchestrator
 
 
@@ -372,11 +377,21 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--logs-dir", required=True)
     parser.add_argument("--logs", required=True, help="Comma-separated existing conn/dns/ssl/tls/packet logs")
     parser.add_argument("--orchestrator-factory", required=True, help="Fresh orchestrator factory as module:function")
+    parser.add_argument(
+        "--orchestrator-config", required=True, type=Path,
+        help="JSON file explicitly supplying all runtime ordering/window configuration fields",
+    )
     parser.add_argument("--replay-mode", choices=("FAST",), default="FAST")
     parser.add_argument("--output", type=Path)
     args = parser.parse_args(argv)
     filenames = tuple(item.strip() for item in args.logs.split(",") if item.strip())
-    orchestrator = _load_factory(args.orchestrator_factory)
+    try:
+        runtime_configuration = json.loads(args.orchestrator_config.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise SystemExit(f"Unable to read orchestrator configuration: {exc}") from exc
+    if not isinstance(runtime_configuration, dict):
+        raise SystemExit("Orchestrator configuration JSON must be an object")
+    orchestrator = _load_factory(args.orchestrator_factory, runtime_configuration)
     result = run_replay_benchmark(
         orchestrator, logs_dir=args.logs_dir, log_files=filenames,
         replay_mode=args.replay_mode, repository_root=Path.cwd(),

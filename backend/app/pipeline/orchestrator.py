@@ -35,12 +35,12 @@ class DetectorRuntimeFailure:
 
 
 class RuntimeOrchestrator:
-    """Coordinate ingestion ordering, generic windows, and ready detectors."""
+    """Coordinate ordering with optional generic windows or per-flow inference."""
 
     def __init__(
         self,
         ordering: ReorderBuffer,
-        windows: DetectorWindowManager,
+        windows: DetectorWindowManager | None,
         registry: Any,
         health: Mapping[str, DetectorHealth] | None = None,
         alert_store: AlertStore | None = None,
@@ -59,6 +59,7 @@ class RuntimeOrchestrator:
         self._scored_opportunities: set[
             tuple[str, Any, object, object, tuple[Any, ...]]
         ] = set()
+        self._scored_events: set[tuple[str, str]] = set()
         self._timings: dict[str, LatencyTiming] = {}
 
     def process_event(
@@ -94,13 +95,14 @@ class RuntimeOrchestrator:
         alerts: list[Alert] = []
         for entry in self.ordering.flush():
             alerts.extend(self._process_ordered(entry.event, entry.event_id))
-        try:
-            emissions = self.windows.flush()
-        except Exception as exc:
-            self._record_failure("windowing", str(exc))
-            emissions = ()
-        for emission in emissions:
-            alerts.extend(self._invoke_emission(emission))
+        if self.windows is not None:
+            try:
+                emissions = self.windows.flush()
+            except Exception as exc:
+                self._record_failure("windowing", str(exc))
+                emissions = ()
+            for emission in emissions:
+                alerts.extend(self._invoke_emission(emission))
         return tuple(alerts)
 
     def get_metrics(self) -> dict[str, int]:
@@ -144,6 +146,11 @@ class RuntimeOrchestrator:
                 )
                 self._record_failure(detector_name, f"Skipped: {reason}")
                 continue
+            if self.windows is None:
+                alert = self._invoke_per_flow(detector_name, event, event_id)
+                if alert is not None:
+                    alerts.append(alert)
+                continue
             try:
                 emissions = self.windows.add(detector_name, grouping_key, event)
             except Exception as exc:
@@ -152,6 +159,58 @@ class RuntimeOrchestrator:
             for emission in emissions:
                 alerts.extend(self._invoke_emission(emission))
         return alerts
+
+    def _invoke_per_flow(
+        self, detector_name: str, event: NormalizedEvent, event_id: str
+    ) -> Alert | None:
+        """Invoke a stateless adapter once for this ordered event, without a window."""
+        identity = (detector_name, event_id)
+        if identity in self._scored_events:
+            return None
+        self._scored_events.add(identity)
+        detector = self.registry.get(detector_name)
+        missing = [
+            feature for feature in detector.required_features
+            if feature not in event.raw_metadata
+        ]
+        if missing:
+            self._record_failure(
+                detector_name,
+                "Skipped: current event raw metadata is missing required detector inputs: "
+                + ", ".join(missing),
+            )
+            return None
+
+        context = {"event_id": event.flow_id or event_id}
+        timing = self._timing_for_event(event)
+        if timing is not None:
+            timing.mark("feature_ready_at")
+            timing.mark("inference_started_at")
+        try:
+            self.metrics.detector_invocations += 1
+            prediction = detector.predict(dict(event.raw_metadata), context)
+            if not isinstance(prediction, Prediction):
+                raise TypeError("adapter did not return Prediction")
+        except Exception as exc:
+            if timing is not None:
+                timing.mark("inference_finished_at")
+            self._record_failure(detector_name, f"Detector invocation failed: {exc}")
+            return None
+        if timing is not None:
+            timing.mark("inference_finished_at")
+        if prediction.status != "DETECTED":
+            return None
+
+        alert_identity = "|".join(
+            (prediction.detector_name, prediction.detector_version, event_id)
+        )
+        try:
+            alert = self._prediction_to_alert(prediction, event, alert_identity)
+        except Exception as exc:
+            self._record_failure(detector_name, f"Alert conversion failed: {exc}")
+            return None
+        self._record_alert(alert, prediction.detector_name, timing)
+        return alert
 
     def _invoke_emission(self, emission: WindowEmission) -> list[Alert]:
         opportunity = (
@@ -220,13 +279,27 @@ class RuntimeOrchestrator:
             timing.mark("inference_finished_at")
         if prediction.status != "DETECTED":
             return []
+        alert_identity = "|".join(
+            (
+                prediction.detector_name,
+                prediction.detector_version,
+                str(emission.grouping_key),
+                emission.scoring_start.isoformat(),
+                emission.scoring_end.isoformat(),
+            )
+        )
         try:
-            alert = self._prediction_to_alert(prediction, source_event, emission)
+            alert = self._prediction_to_alert(prediction, source_event, alert_identity)
         except Exception as exc:
             self._record_failure(emission.detector_name, f"Alert conversion failed: {exc}")
             return []
+        self._record_alert(alert, prediction.detector_name, timing)
+        return [alert]
+
+    def _record_alert(
+        self, alert: Alert, detector_name: str, timing: LatencyTiming | None
+    ) -> None:
         self.metrics.alerts_produced += 1
-        timing = self._timing_for_event(source_event)
         if timing is not None:
             timing.mark("alert_created_at")
             alert.timing = timing.model_dump()
@@ -238,7 +311,7 @@ class RuntimeOrchestrator:
                 stored = True
             except Exception as exc:
                 stored = False
-                self._record_failure(emission.detector_name, f"Alert store failed: {exc}")
+                self._record_failure(detector_name, f"Alert store failed: {exc}")
         else:
             stored = False
         if stored and self.alert_publisher is not None:
@@ -249,25 +322,15 @@ class RuntimeOrchestrator:
 
                     asyncio.get_running_loop().create_task(publication)
             except Exception as exc:
-                self._record_failure(emission.detector_name, f"Alert publication failed: {exc}")
-        return [alert]
+                self._record_failure(detector_name, f"Alert publication failed: {exc}")
 
     def _prediction_to_alert(
         self,
         prediction: Prediction,
         event: NormalizedEvent,
-        emission: WindowEmission,
+        alert_identity: str,
     ) -> Alert:
-        identity = "|".join(
-            (
-                prediction.detector_name,
-                prediction.detector_version,
-                str(emission.grouping_key),
-                emission.scoring_start.isoformat(),
-                emission.scoring_end.isoformat(),
-            )
-        )
-        alert_id = "ALT-" + sha256(identity.encode("utf-8")).hexdigest()[:16]
+        alert_id = "ALT-" + sha256(alert_identity.encode("utf-8")).hexdigest()[:16]
         confidence = (
             prediction.raw_score
             if prediction.score_type == "probability"

@@ -8,12 +8,13 @@ The standard-library runner is `backend.app.benchmark`. It consumes existing Zee
 python -m backend.app.benchmark \
   --logs-dir /path/to/zeek/fixture \
   --logs conn.log,dns.log \
-  --orchestrator-factory deployment.runtime:create_orchestrator \
+  --orchestrator-factory backend.app.runtime_factory:create_orchestrator \
+  --orchestrator-config /path/to/owner-approved-orchestrator.json \
   --replay-mode FAST \
   --output results/spectra-benchmark.json
 ```
 
-The factory must return a new configured `RuntimeOrchestrator` each time. Configure its detector registry, model versions, ordering capacity/policy, window semantics, `AlertStore`, and latency collector using the deployment's existing setup. The benchmark refuses missing selected files or a previously used orchestrator. `FAST` is the only replay rate currently implemented by SPECTRA; it processes records without wall-clock pacing while yielding to the asyncio loop. There is no fixed-rate replay mode in the current runtime, and the runner does not add one. Timestamp-preserving replay is not implemented.
+The factory takes the separate JSON orchestrator configuration and returns a new configured `RuntimeOrchestrator`. The JSON must explicitly supply every ordering field and `window_config: null`; the factory adds the currently integrated per-flow DDoS and Port Scan adapters, a fresh empty `AlertStore`, and a fresh latency collector. See [runtime configuration](RUNTIME_CONFIGURATION.md). Benchmark fixture/replay arguments do not supply runtime values. The benchmark refuses missing selected files or a previously used orchestrator. `FAST` is the only replay rate currently implemented by SPECTRA; it processes records without wall-clock pacing while yielding to the asyncio loop. There is no fixed-rate replay mode in the current runtime, and the runner does not add one. Timestamp-preserving replay is not implemented.
 
 The JSON result records fixture names and SHA-256 digests, configuration digest, runtime/replay mode, Git SHA, Python/OS, detected Zeek version if installed, detector/model metadata, timestamps, rates, distributions, queue/drop counters, resources and limitations. `input_records` counts successfully decoded Zeek records; parse errors are reported separately. `accepted_events` comes from the existing reorder buffer, and `processed_events` comes from the orchestrator. `flows_per_second` counts `conn.log` records. Packet/sec and Mbps are reported only when every selected packet record contains supported explicit `packets` and/or byte fields; otherwise they are null with a reason.
 
@@ -30,6 +31,6 @@ The JSON result records fixture names and SHA-256 digests, configuration digest,
 
 The repository currently has detector feature JSON examples and no checked-in Zeek log or PCAP-derived telemetry fixture. Do not convert those feature examples into pretend Zeek records. Use a retained, real Zeek fixture and preserve its files, hashes, Zeek configuration/version, orchestrator configuration, model/artifact identifiers, Python version and Git SHA with the JSON result. The current working tree's `HEAD` SHA is recorded; local uncommitted changes are not represented by that SHA, so retain the working tree diff or benchmark only from a commit.
 
-No replay benchmark result is included until a real Zeek log fixture and the deployment's actual orchestrator factory are available. Benchmark tests use a tiny temporary TSV input strictly to verify the runner; their timing is test behavior and is not a performance result.
+No repository-authorized production ordering values exist for maximum lateness, buffer capacity, too-late policy, or overflow policy. Do not use values from unit tests as deployment settings. Benchmark tests use a tiny temporary TSV input strictly to verify the runner; their timing is test behavior and is not a performance result. No detector-enabled benchmark should be run until an owner supplies the required configuration.
 
 On Windows, process measurements describe this development process only. Windows replay cannot validate Linux Zeek capture, passive mirror visibility, packet loss or data-diode deployment. A benchmark run on a developer machine must not be presented as production sensor performance. For LIVE validation, run the separately documented passive Linux Zeek setup and collect sensor-side loss diagnostics; do not imply that LIVE performance has been validated by replay.
