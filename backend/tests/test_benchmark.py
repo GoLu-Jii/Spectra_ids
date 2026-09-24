@@ -97,6 +97,25 @@ def test_result_serializes_as_json_and_human_summary(tmp_path):
     assert "Input records: 2" in render_summary(decoded)
 
 
+def test_result_records_source_pcap_and_explicit_zeek_version(tmp_path):
+    (tmp_path / "conn.log").write_text(HEADER, encoding="utf-8")
+    source_pcap = tmp_path / "source.pcap"
+    source_pcap.write_bytes(b"offline capture bytes")
+
+    result = run_replay_benchmark(
+        make_orchestrator(),
+        logs_dir=tmp_path,
+        log_files=("conn.log",),
+        source_pcap=source_pcap,
+        zeek_version="/opt/zeek/bin/zeek version 8.0.10",
+    )
+
+    assert result["metadata"]["source_pcap"]["sha256"] == (
+        "cf8835e39ecd9317c59742f06b4c4e745d133eb739b5a2a2d6f053c9ae9d3aec"
+    )
+    assert result["metadata"]["zeek_version"] == "/opt/zeek/bin/zeek version 8.0.10"
+
+
 def test_throughput_rate_formula_is_exact():
     from backend.app.benchmark import _rate
 

@@ -6,9 +6,8 @@ from typing import Mapping
 
 from .config.detectors import DETECTOR_CONFIGS
 from .config.orchestrator import (
-    MissingRuntimeConfigurationError,
     OrchestratorRuntimeConfig,
-    REQUIRED_ORCHESTRATOR_FIELDS,
+    P0_RUNTIME_CONFIGURATION,
 )
 from .detectors.factories import DETECTOR_FACTORIES
 from .detectors.loader import DetectorLoader
@@ -27,18 +26,21 @@ def create_orchestrator(
 ) -> RuntimeOrchestrator:
     """Build a fresh orchestrator from all caller-supplied runtime decisions.
 
-    There are intentionally no ordering or window defaults. This factory
-    currently supports only the integrated stateless per-flow detector adapters.
+    The no-argument form uses the project-owned P0 configuration. Callers may
+    pass the same configuration explicitly; alternate values are rejected so
+    this deployment factory cannot silently drift from the locked P0 settings.
     """
     if configuration is None:
-        raise MissingRuntimeConfigurationError(
-            "Missing required runtime configuration fields: "
-            + ", ".join(REQUIRED_ORCHESTRATOR_FIELDS)
-        )
-    if isinstance(configuration, OrchestratorRuntimeConfig):
+        runtime_config = P0_RUNTIME_CONFIGURATION
+    elif isinstance(configuration, OrchestratorRuntimeConfig):
         runtime_config = configuration
     else:
         runtime_config = OrchestratorRuntimeConfig.from_mapping(configuration)
+    if runtime_config != P0_RUNTIME_CONFIGURATION:
+        raise ValueError(
+            "P0 runtime configuration is locked; expected "
+            + repr(P0_RUNTIME_CONFIGURATION.as_dict())
+        )
 
     registry = DetectorRegistry()
     detector_configs = {

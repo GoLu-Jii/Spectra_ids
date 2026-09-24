@@ -1,0 +1,7 @@
+{
+  "maximum_lateness_seconds": 5,
+  "buffer_capacity": 4096,
+  "late_event_behavior": "release",
+  "overflow_behavior": "release_oldest",
+  "window_config": null
+}

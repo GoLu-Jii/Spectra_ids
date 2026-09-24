@@ -82,3 +82,14 @@ class OrchestratorRuntimeConfig:
             "overflow_behavior": self.overflow_behavior,
             "window_config": None,
         }
+
+
+# Project-owned P0 decisions supplied for the stateless DDoS + Port Scan path.
+# These are explicit project values, not values claimed to come from the PRD.
+P0_RUNTIME_CONFIGURATION = OrchestratorRuntimeConfig(
+    maximum_lateness_seconds=5,
+    buffer_capacity=4096,
+    late_event_behavior="release",
+    overflow_behavior="release_oldest",
+    window_config=None,
+)

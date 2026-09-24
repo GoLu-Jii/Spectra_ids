@@ -38,6 +38,9 @@ def run_replay_benchmark(
     log_files: tuple[str, ...],
     replay_mode: str = "FAST",
     repository_root: str | Path | None = None,
+    source_pcap: str | Path | None = None,
+    source_pcap_origin: str | None = None,
+    zeek_version: str | None = None,
 ) -> dict[str, object]:
     """Replay one explicit Zeek log set through a fresh existing orchestrator."""
     if replay_mode != "FAST":
@@ -61,6 +64,19 @@ def run_replay_benchmark(
         fixture_hash.update(path.name.encode("utf-8"))
         fixture_hash.update(bytes.fromhex(digest))
         fixture_files.append({"name": path.name, "size_bytes": path.stat().st_size, "sha256": digest})
+
+    source_pcap_metadata = None
+    if source_pcap is not None:
+        pcap_path = Path(source_pcap)
+        if not pcap_path.is_file():
+            raise FileNotFoundError(f"Source PCAP not found: {pcap_path}")
+        source_pcap_metadata = {
+            "name": pcap_path.name,
+            "path": str(pcap_path.resolve()),
+            "origin": source_pcap_origin,
+            "size_bytes": pcap_path.stat().st_size,
+            "sha256": _sha256_file(pcap_path),
+        }
 
     root = Path(repository_root) if repository_root is not None else Path.cwd()
     models = _model_versions(orchestrator)
@@ -160,8 +176,10 @@ def run_replay_benchmark(
     result: dict[str, object] = {
         "metadata": {
             "fixture_identifier": ",".join(path.name for path in paths),
+            "logs_directory": str(directory.resolve()),
             "fixture_sha256": fixture_hash.hexdigest(),
             "fixture_files": fixture_files,
+            "source_pcap": source_pcap_metadata,
             "runtime_mode": "REPLAY",
             "replay_mode": replay_mode,
             "replay_rate": "unpaced",
@@ -170,7 +188,7 @@ def run_replay_benchmark(
             "git_sha": _git_sha(root),
             "python_version": platform.python_version(),
             "os_platform": platform.platform(),
-            "zeek_version": _zeek_version(),
+            "zeek_version": zeek_version or _zeek_version(),
             "configuration_identifier": config_id,
             "configuration": configuration,
             "detectors": models,
@@ -232,6 +250,14 @@ def write_result(result: dict[str, object], output: str | Path) -> None:
     target = Path(output)
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(json.dumps(result, indent=2, sort_keys=True, allow_nan=False) + "\n", encoding="utf-8")
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def render_summary(result: dict[str, object]) -> str:
@@ -381,6 +407,9 @@ def main(argv: list[str] | None = None) -> int:
         "--orchestrator-config", required=True, type=Path,
         help="JSON file explicitly supplying all runtime ordering/window configuration fields",
     )
+    parser.add_argument("--source-pcap", type=Path, help="Source PCAP path for provenance metadata")
+    parser.add_argument("--source-pcap-origin", help="Original source path/identifier for the PCAP")
+    parser.add_argument("--zeek-version", help="Zeek version used to generate the selected logs")
     parser.add_argument("--replay-mode", choices=("FAST",), default="FAST")
     parser.add_argument("--output", type=Path)
     args = parser.parse_args(argv)
@@ -395,6 +424,8 @@ def main(argv: list[str] | None = None) -> int:
     result = run_replay_benchmark(
         orchestrator, logs_dir=args.logs_dir, log_files=filenames,
         replay_mode=args.replay_mode, repository_root=Path.cwd(),
+        source_pcap=args.source_pcap, source_pcap_origin=args.source_pcap_origin,
+        zeek_version=args.zeek_version,
     )
     print(render_summary(result))
     if args.output is not None:
