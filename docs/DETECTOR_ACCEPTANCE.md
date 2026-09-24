@@ -173,12 +173,82 @@ bundled DNS53 PCAP is used only to check packet-log parsing and aggregation;
 its one-packet benign UDP flow is not DDoS or Port Scan validation, and this
 task does not run either model against it.
 
-No attack capture with complete packet observations is checked in. A legitimate
-offline DDoS evaluation needs a provenance-recorded DDoS PCAP; a Port Scan
-evaluation needs a provenance-recorded scan PCAP (for example a raw
-CIC-IDS2017 PortScan scenario). Those must be analyzed offline and reported as
-separate evaluations. A model prediction, if produced later, will not by
-itself establish detector effectiveness or live sensor performance.
+No attack capture is checked into the repository. The DNS53 PCAP remains only
+a packet-producer sanity fixture. Task 12D's attempted external capture and
+its result are documented below; DNS53 was not used for detector acceptance.
+
+## Task 12D — real offline detector acceptance
+
+### Acceptance status
+
+- **DDoS: BLOCKED.** No complete source PCAP was available to Zeek, so no DDoS
+  feature contract was evaluated and no model inference was run.
+- **Port Scan: BLOCKED.** No complete source PCAP was available to Zeek, so no
+  Port Scan feature contract was evaluated and no model inference was run.
+
+This is a source-telemetry acquisition block, not a finding that any individual
+feature is missing from the producer. The 13 DDoS inputs and 8 Port Scan inputs
+remain unobserved for this acceptance attempt. Eligible flows are not
+measurable; detector invocations were zero; prediction scores, confidence,
+evidence, alerts, and latency were not produced. No synthetic feature vectors
+or alerts were used.
+
+### Intended capture and provenance
+
+- Dataset: CIC-IDS2017, Friday working-hours capture, dated July 7, 2017.
+- Filename: `Friday-WorkingHours.pcap`.
+- Public mirror URL requested:
+  `https://huggingface.co/datasets/bvsam/cic-ids-2017/resolve/main/pcap/Friday-WorkingHours.pcap?download=true`.
+- The mirror's dataset card identifies the repository as a copy of CIC-IDS2017
+  and says its `pcap/` directory contains the original PCAP files. The official
+  CIC description publishes the Friday Port Scan schedule and DDoS LOIT
+  interval. [Mirror dataset card](https://huggingface.co/datasets/bvsam/cic-ids-2017),
+  [mirror PCAP listing](https://huggingface.co/datasets/bvsam/cic-ids-2017/tree/main/pcap),
+  [official CIC-IDS2017 description](https://www.unb.ca/cic/datasets/ids-2017.html).
+- Download attempt date: 2026-09-24.
+- The Hub resolved the request to repository commit
+  `70bac6246d99cf046186a02e1cce6883e2ffe7ea`; its response advertised a size of
+  8,839,309,056 bytes. The associated Xet object identifier was
+  `4afeed7141e4e6aba9707ce717746d91a8cb78cd293dff12d7241e77e5d79030`. These
+  are Hub metadata values, not a SHA-256 checksum of the PCAP.
+- Only 2,576,039,342 bytes were received. The transfer stopped because
+  `us.aws.cdn.hf.co` could not be resolved from either the Windows host or WSL.
+  The official CIC download endpoint redirected to the UNB dataset index.
+- **PCAP SHA-256: unavailable.** The partial file is not a valid PCAP artifact
+  for acceptance and was not parsed or hashed as if complete. It remains outside
+  Git at `C:\Users\Kabir\AppData\Local\Temp\SpectraTask12D\Friday-WorkingHours.pcap`.
+- The official schedule documents Port Scan activity from 13:55 through 15:29
+  (including the listed scan sub-intervals) and DDoS LOIT from 15:56 to 16:16.
+  These labels/time windows were not verified against packets in this attempt.
+
+### Zeek, feature contract, and model results
+
+- Zeek 8.0.10 is installed in WSL, but it was **not run** on the incomplete
+  file. No `conn.log`, `dns.log`, `ssl.log`, `packet.log`, or filtered replay
+  log was generated for this acceptance.
+- The P0 factory configuration available for a future run is
+  `maximum_lateness_seconds=5`, `buffer_capacity=4096`,
+  `late_event_behavior=release`, `overflow_behavior=release_oldest`, and
+  `window_config=null`. It was not instantiated for replay in this attempt.
+- Producer version intended for the run: `zeek_new_packet_v1`, implemented in
+  `backend/zeek/packet_flow_features.zeek` and
+  `backend/app/detectors/packet_flow_features.py`. No per-flow input records
+  were written.
+- DDoS exact model inputs, predictions, positive-class `model_score`,
+  calibrated confidence, evidence, alerts, failures, and latency: **not
+  produced**.
+- Port Scan exact model inputs, predictions, positive-class `model_score`,
+  calibrated confidence, evidence, alerts, failures, and latency: **not
+  produced**.
+- Generated-log checksums, benchmark JSON, CPU/memory snapshots, and WebSocket
+  metrics: **not available**, because Zeek and the benchmark runner were not
+  run. Replay `capture_to_alert` and `capture_to_dashboard` therefore remain
+  unavailable.
+
+The training-feature parity statuses remain **INCOMPLETE** for both detectors
+as recorded above. No acceptance status is claimed from model loading alone.
+After a complete PCAP is available, this task must be rerun to verify actual
+packets, enumerate complete ordered feature contracts, and invoke the models.
 
 ### References
 
@@ -187,3 +257,161 @@ itself establish detector effectiveness or live sensor performance.
 - [CICFlowMeter feature definitions](https://github.com/ahlashkari/CICFlowMeter/blob/master/src/main/java/cic/cs/unb/ca/jnetpcap/FlowFeature.java)
 - [DDoS model handoff](../detectors/ddos/ddos_model.md)
 - [Port Scan model handoff](../detectors/port_scan/port_scan_model.md)
+
+## Task 12E — two-track detector acceptance
+
+### Current status
+
+| Detector | Model-level CIC flow acceptance | Packet-path functional exercise | Training parity | Production validation |
+|---|---|---|---|---|
+| DDoS | **BLOCKED** | **FUNCTIONALLY EXERCISED** | **INCOMPLETE** | **BLOCKED** |
+| Port Scan | **BLOCKED** | **FUNCTIONALLY EXERCISED** | **INCOMPLETE** | **BLOCKED** |
+
+`FUNCTIONALLY EXERCISED` in the packet-path column means the controlled
+PCAP passed through Zeek, the checked-in packet logger, the packet-flow
+producer, the exact detector contracts, and the existing model adapters.
+It does not establish detection accuracy. The synthetic packets are not
+CIC-IDS2017 and were never transmitted. Model-level CIC flow acceptance is
+blocked because the requested public CSVs could not be downloaded. Training
+parity remains incomplete for the reasons in the Task 12C matrices above.
+No production sensor or data-diode validation was performed.
+
+### Track A — real CIC flow-data model acceptance
+
+The intended source is the public CIC-IDS2017 attack-specific flow CSV mirror
+at [Mireu-Lab/CIC-IDS `CSV/`](https://huggingface.co/datasets/Mireu-Lab/CIC-IDS/tree/main/CSV).
+Its listing contains the two requested files, shown as 77.1 MB and 76.9 MB.
+The mirror card identifies these files as DDoS and PortScan flow data; the
+[official CIC-IDS2017 page](https://www.unb.ca/cic/datasets/ids-2017.html)
+describes the labeled CSVs as CICFlowMeter analyses of the dataset traffic.
+
+| Intended file | Exact URL requested | Result |
+|---|---|---|
+| `Friday-WorkingHours-Afternoon-DDos.pcap_ISCX.csv` | `https://huggingface.co/datasets/Mireu-Lab/CIC-IDS/resolve/main/CSV/Friday-WorkingHours-Afternoon-DDos.pcap_ISCX.csv?download=true` | Not downloaded |
+| `Friday-WorkingHours-Afternoon-PortScan.pcap_ISCX.csv` | `https://huggingface.co/datasets/Mireu-Lab/CIC-IDS/resolve/main/CSV/Friday-WorkingHours-Afternoon-PortScan.pcap_ISCX.csv?download=true` | Not downloaded |
+
+Download was attempted on 2026-09-24. Both requests redirected to
+`us.aws.cdn.hf.co`, which could not be resolved from the Windows host. The
+same resolution failure remained when the download command was run with the
+network escalation required by the environment. No CSV bytes were accepted
+as a fixture. Therefore the local exact-column inspection, row/label counts,
+source SHA-256, row identifiers, deterministic attack/benign sample, adapter
+invocations, scores, and predictions are all **unavailable**. No CIC flow
+values were substituted from tests or handoff examples, and no inference was
+run for Track A. Its result is **BLOCKED**, with zero eligible rows and zero
+detector invocations. Download timestamp and SHA-256 are not applicable
+because neither download completed.
+
+### Track B — controlled offline packet-path exercise
+
+#### Provenance and execution
+
+- Classification: **CONTROLLED SYNTHETIC OFFLINE TRAFFIC**; this is not
+  CIC-IDS2017 and is not evidence about real DDoS or scan behavior.
+- A deterministic local packet-object script created an 82-packet PCAP: eight
+  TCP SYN probes to distinct destination ports, eight RST/ACK replies, 64
+  UDP packets of 1,200 payload bytes each at 1 ms spacing, and a separate
+  closed TCP flow whose later timestamp allowed Zeek to expire the UDP flow.
+  No packets were transmitted.
+- PCAP path outside Git:
+  `C:\Users\Kabir\AppData\Local\Temp\SpectraTask12E\controlled_synthetic_offline.pcap`.
+  SHA-256: `2660a4706b2471d394e05cd668342350c380a04878511acc9440c45bbb2e8f4f`.
+- Generator script outside Git:
+  `C:\Users\Kabir\AppData\Local\Temp\SpectraTask12E\build_controlled_pcap.py`.
+  SHA-256: `d98c02132f84610b0bfd4186e123fdadec6436fecca4ab9c00f912971931aaa8`.
+- Zeek: `/opt/zeek/bin/zeek version 8.0.10`.
+- Zeek command (run from the temporary artifact directory):
+  `/opt/zeek/bin/zeek -C -r controlled_synthetic_offline.pcap '/mnt/c/All Projects/Spectra_ids/backend/zeek/packet_flow_features.zeek'`.
+- The P0 factory `backend.app.runtime_factory:create_orchestrator` was called
+  with the explicit configuration below. The existing benchmark runner then
+  replayed `packet.log` in `REPLAY` / `FAST` mode through that fresh runtime.
+
+```json
+{
+  "maximum_lateness_seconds": 5,
+  "buffer_capacity": 4096,
+  "late_event_behavior": "release",
+  "overflow_behavior": "release_oldest",
+  "window_config": null
+}
+```
+
+Runtime evidence: Python 3.13.3, Windows 11 build 26200 host, Git `4d4bb6e5142405e293abb6ba913235527ffaed54`. The Zeek-generated logs were
+outside Git:
+
+| Log | Size | SHA-256 |
+|---|---:|---|
+| `packet.log` (consumed by replay; 92 records: 82 packet observations and 10 flow-end markers) | 8,445 bytes | `586fa6b3518ac54cd6d49ce5d5d761e0bdab626fce2bf5fbca475a8a24ffd589` |
+| `conn.log` (10 flow records; generated, not consumed by this packet-only replay) | 1,685 bytes | `ef83538f8454ff211306ff3e68993b2c84b8f36b6f063bd51f58f22e788888e3` |
+| `packet_filter.log` | 278 bytes | `c69551b83a4f90b5d79b84d9e0be744649d4257ad5f77ed3ab13ad23521f9888` |
+| `weird.log` | 1,318 bytes | `9422dfc09328f4591effb9cb33cb2a86ab2c1404fef724e4c04e173ee252b0b1` |
+
+The benchmark result, including each flow UID, every ordered adapter input,
+each prediction and evidence, alert summaries, resource snapshots, and
+backend metrics, is
+`C:\Users\Kabir\AppData\Local\Temp\SpectraTask12E\packet_path_acceptance.json`.
+Its SHA-256 is
+`57ccd35191216c1a3f773f97db05c68abdc0a531fef481f02d62b203debeb318`.
+The benchmark began at `2026-09-24T14:41:43.266879+00:00` and ended at
+`2026-09-24T14:41:43.414623+00:00`.
+
+#### Runtime and inference results
+
+- Runtime read, accepted, and processed 92 packet-log records. It observed 10
+  completed flows, with no parse errors, normalization errors, detector
+  failures, application drops, or queue overflows. Seven records were marked
+  late and released under the configured `release` policy; too-late count was
+  zero. Reorder-buffer depth peaked at 66 and finished at zero.
+- The DDoS adapter was invoked 10 times with all 13 raw fields in the declared
+  order. Nine TCP probe/reply flows returned `DETECTED`, each with
+  `model_score=0.4257778823375702` against the unchanged threshold
+  `0.13920332491397858`. The remaining UDP flow returned `BENIGN` with
+  `model_score=0.062230102717876434`.
+- The Port Scan adapter was invoked 10 times with all 8 raw fields in the
+  declared order. All returned `BENIGN`; none crossed its unchanged threshold
+  `0.50166595`. The largest score was `0.3100384771823883` for destination
+  port 23. Port Scan alerts generated: zero.
+- Nine actual alerts were stored, all DDoS alerts on the synthetic TCP
+  probe/reply flows. They and their model evidence are included in the result
+  JSON. The synthetic UDP flow generated no alert. These are actual outputs
+  of the existing thresholds and adapters; they were not fabricated or tuned.
+- For the UDP flow, the exact DDoS raw input was: `Flow Packets/s=1015.8730158730159`,
+  `Flow Bytes/s=1219047.619047619`, `Flow Duration=63000`,
+  `Total Fwd Packets=64`, `Total Backward Packets=0`,
+  `Fwd Packets Length Total=76800`, `Bwd Packets Length Total=0`,
+  `SYN Flag Count=0`, `RST Flag Count=0`, `ACK Flag Count=0`,
+  `Packet Length Mean=1200.0`, `Packet Length Std=0.0`, `Protocol=17`.
+- Each of the nine TCP probe/reply flows had the same DDoS input:
+  `Flow Packets/s=200.0`, `Flow Bytes/s=0.0`, `Flow Duration=10000`,
+  `Total Fwd Packets=1`, `Total Backward Packets=1`,
+  `Fwd Packets Length Total=0`, `Bwd Packets Length Total=0`,
+  `SYN Flag Count=1`, `RST Flag Count=1`, `ACK Flag Count=1`,
+  `Packet Length Mean=0.0`, `Packet Length Std=0.0`, `Protocol=6`.
+- Each TCP Port Scan input had `Flow Duration=10000`, one forward and one
+  backward packet, `Flow Packets/s=200.0`, `Fwd Packets/s=100.0`,
+  `Bwd Packets/s=100.0`, and `FIN Flag Count=0`; the exact destination port
+  and per-flow score are recorded by UID in the JSON result. The eight probe
+  destination ports were 21, 22, 23, 53, 80, 443, 8080, and 8443; the
+  separate flow used port 9001. The UDP Port Scan input used port 9000.
+- `model_score` is the existing positive-class `predict_proba` output. It is
+  uncalibrated; calibrated confidence remains unavailable. The benchmark marks
+  `capture_to_alert` and `capture_to_dashboard` unavailable because historical
+  packet timestamps do not measure elapsed replay wall time. This unpaced
+  FAST replay is not live throughput, capture latency, or production evidence.
+
+The packet-path track is **FUNCTIONALLY EXERCISED** for both adapters because
+complete contracts reached inference. The observed DDoS detections on the
+synthetic scan pattern and non-detection of the synthetic UDP flow, and the
+Port Scan non-detections, are reported as outputs only. They do not establish
+model accuracy, CIC behavior, or training parity.
+
+### Remaining acceptance gaps
+
+1. Track A needs access to the two named CIC flow CSVs from a reachable,
+   provenance-preserving source. Until bytes can be inspected and hashed,
+   CIC-row model acceptance remains blocked.
+2. DDoS and Port Scan feature parity remains **INCOMPLETE**. The exact original
+   training ETL, versions, and feature-extraction semantics are still not
+   established in the repository.
+3. Production validation remains **BLOCKED**. No production capture source,
+   data diode, live throughput, or real attack capture was exercised.
