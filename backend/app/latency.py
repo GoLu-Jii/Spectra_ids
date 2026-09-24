@@ -159,6 +159,12 @@ class LatencyMetricsCollector:
         for name, value in timing.durations().items():
             self.observations.setdefault(name, []).append(value)
 
+    def record_delivery(self, alert) -> None:
+        for name in ("delivery_time", "capture_to_dashboard"):
+            value = alert.latency_durations.get(name)
+            if value is not None:
+                self.observations.setdefault(name, []).append(value)
+
     def summary(self, metric: str) -> dict[str, float | int | None]:
         values = sorted(self.observations.get(metric, []))
         if not values:

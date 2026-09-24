@@ -3,8 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from hashlib import sha256
+from inspect import isawaitable
 from time import monotonic
-from typing import Any, Mapping
+from typing import Any, Callable, Mapping
 
 from ..detectors.base import BaseThreatDetector
 from ..detectors.health import DetectorHealth
@@ -44,6 +45,7 @@ class RuntimeOrchestrator:
         health: Mapping[str, DetectorHealth] | None = None,
         alert_store: AlertStore | None = None,
         latency_metrics: LatencyMetricsCollector | None = None,
+        alert_publisher: Callable[[Alert], Awaitable[None] | None] | None = None,
     ) -> None:
         self.ordering = ordering
         self.windows = windows
@@ -51,6 +53,7 @@ class RuntimeOrchestrator:
         self.health = dict(health or {})
         self.alert_store = alert_store
         self.latency_metrics = latency_metrics or LatencyMetricsCollector()
+        self.alert_publisher = alert_publisher
         self.metrics = OrchestratorMetrics()
         self._runtime_failures: list[DetectorRuntimeFailure] = []
         self._scored_opportunities: set[
@@ -230,8 +233,21 @@ class RuntimeOrchestrator:
         if self.alert_store is not None:
             try:
                 self.alert_store.create(alert)
+                stored = True
             except Exception as exc:
+                stored = False
                 self._record_failure(emission.detector_name, f"Alert store failed: {exc}")
+        else:
+            stored = False
+        if stored and self.alert_publisher is not None:
+            try:
+                publication = self.alert_publisher(alert)
+                if isawaitable(publication):
+                    import asyncio
+
+                    asyncio.get_running_loop().create_task(publication)
+            except Exception as exc:
+                self._record_failure(emission.detector_name, f"Alert publication failed: {exc}")
         return [alert]
 
     def _prediction_to_alert(
