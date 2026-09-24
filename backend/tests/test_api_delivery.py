@@ -126,3 +126,4 @@ def test_slow_client_queue_is_bounded_and_dropped():
 
     asyncio.run(exercise())
     assert delivery.snapshot()["client_drops"] == 1
+    assert delivery.snapshot()["queue_peak_depth"] == 1

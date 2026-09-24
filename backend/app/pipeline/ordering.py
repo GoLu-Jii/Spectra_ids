@@ -51,6 +51,7 @@ class ReorderStats:
     too_late_events: int = 0
     current_buffer_depth: int = 0
     peak_buffer_depth: int = 0
+    overflow_events: int = 0
 
 
 class BufferOverflowError(RuntimeError):
@@ -101,6 +102,7 @@ class ReorderBuffer:
             )
 
         if len(self._buffer) >= self.config.buffer_capacity:
+            self.stats.overflow_events += 1
             if self.config.overflow_behavior == "reject":
                 raise BufferOverflowError("Reorder buffer capacity exceeded")
             released = self._release_oldest()

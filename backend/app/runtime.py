@@ -23,6 +23,14 @@ class ZeekRuntime:
     events_ingested: int = field(default=0, init=False)
     normalization_errors: int = field(default=0, init=False)
     source_errors: int = field(default=0, init=False)
+    parse_errors: int = field(default=0, init=False)
+    records_read: int = field(default=0, init=False)
+    records_by_type: dict[str, int] = field(default_factory=dict, init=False)
+    normalization_errors_by_type: dict[str, int] = field(default_factory=dict, init=False)
+    packet_count_total: int = field(default=0, init=False)
+    packet_count_observations: int = field(default=0, init=False)
+    packet_bytes_total: int = field(default=0, init=False)
+    packet_bytes_observations: int = field(default=0, init=False)
     _event_index: int = field(default=0, init=False)
     replay_files: list[str] = field(default_factory=list, init=False)
 
@@ -68,6 +76,14 @@ class ZeekRuntime:
             "zeek_log_directory": str(self.config.zeek_log_dir),
             "files_consumed": list(tailer.active_files) if tailer else list(self.replay_files),
             "events_ingested": self.events_ingested,
+            "records_read": self.records_read,
+            "records_by_type": dict(self.records_by_type),
+            "packet_count_total": self.packet_count_total,
+            "packet_count_observations": self.packet_count_observations,
+            "packet_bytes_total": self.packet_bytes_total,
+            "packet_bytes_observations": self.packet_bytes_observations,
+            "parse_errors": self.parse_errors + (tailer.parse_errors if tailer else 0),
+            "normalization_errors_by_type": dict(self.normalization_errors_by_type),
             "normalization_errors": self.normalization_errors,
             "source_errors": self.source_errors,
             "tail_overflow_events": tailer.overflow_records if tailer else 0,
@@ -104,6 +120,7 @@ class ZeekRuntime:
                             record = parser.parse(line, line_number)
                         except ZeekReadError:
                             self.source_errors += 1
+                            self.parse_errors += 1
                             await asyncio.sleep(0)
                             continue
                         if record is not None:
@@ -123,10 +140,13 @@ class ZeekRuntime:
         *,
         event_index: int | None = None,
     ) -> None:
+        self._count_record(record)
         try:
             event = normalize_zeek_record(record)
         except (EventNormalizationError, TypeError, ValueError):
             self.normalization_errors += 1
+            event_type = str(record.get("event_type", "unknown"))
+            self.normalization_errors_by_type[event_type] = self.normalization_errors_by_type.get(event_type, 0) + 1
             return
         if event_index is None:
             self._event_index += 1
@@ -142,3 +162,34 @@ class ZeekRuntime:
             # Keep a faulty event from terminating the long-running source task.
             self.source_errors += 1
             return
+
+    def _count_record(self, record: dict[str, object]) -> None:
+        event_type = str(record.get("event_type", "unknown"))
+        self.records_read += 1
+        self.records_by_type[event_type] = self.records_by_type.get(event_type, 0) + 1
+        if event_type == "packet":
+            packet_count = self._sum_record_fields(record, "packets", "orig_pkts", "resp_pkts")
+            packet_bytes = self._sum_record_fields(record, "bytes", "orig_bytes", "resp_bytes")
+            if packet_count is not None:
+                self.packet_count_total += packet_count
+                self.packet_count_observations += 1
+            if packet_bytes is not None:
+                self.packet_bytes_total += packet_bytes
+                self.packet_bytes_observations += 1
+
+    @staticmethod
+    def _sum_record_fields(record: dict[str, object], direct: str, first: str, second: str) -> int | None:
+        def number(value: object) -> int | None:
+            if value is None or value == "-":
+                return None
+            try:
+                return int(value)
+            except (TypeError, ValueError):
+                return None
+
+        direct_value = number(record.get(direct))
+        if direct_value is not None:
+            return direct_value
+        values = [number(record.get(first)), number(record.get(second))]
+        present = [value for value in values if value is not None]
+        return sum(present) if present else None

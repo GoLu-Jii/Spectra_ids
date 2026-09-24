@@ -30,6 +30,7 @@ class AlertDelivery:
             "delivered_alerts": 0,
             "client_drops": 0,
             "send_failures": 0,
+            "queue_peak_depth": 0,
         }
     )
 
@@ -71,12 +72,18 @@ class AlertDelivery:
         for key, client in list(self.clients.items()):
             try:
                 client.queue.put_nowait((alert, alert.model_dump(mode="json")))
+                current_depth = sum(item.queue.qsize() for item in self.clients.values())
+                self.metrics["queue_peak_depth"] = max(self.metrics["queue_peak_depth"], current_depth)
             except asyncio.QueueFull:
                 self.metrics["client_drops"] += 1
                 self._schedule_disconnect(key)
 
     def snapshot(self) -> dict[str, int]:
-        return {**self.metrics, "connected_clients": len(self.clients)}
+        return {
+            **self.metrics,
+            "connected_clients": len(self.clients),
+            "queue_current_depth": sum(client.queue.qsize() for client in self.clients.values()),
+        }
 
     async def _send_loop(self, key: int, client: _Client) -> None:
         try:

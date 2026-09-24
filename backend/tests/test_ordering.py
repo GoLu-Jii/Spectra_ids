@@ -83,6 +83,7 @@ def test_buffer_overflow_releases_oldest_explicitly():
     assert [entry.event.flow_id for entry in outcome.released] == ["a"]
     assert buffer.stats.current_buffer_depth == 2
     assert buffer.stats.peak_buffer_depth == 2
+    assert buffer.stats.overflow_events == 1
 
 
 def test_reject_overflow_does_not_silently_accept_event():
@@ -93,6 +94,7 @@ def test_reject_overflow_does_not_silently_accept_event():
 
     with pytest.raises(BufferOverflowError):
         buffer.push(event(1, "b"))
+    assert buffer.stats.overflow_events == 1
 
 
 def test_event_identity_and_arrival_order_are_preserved():
