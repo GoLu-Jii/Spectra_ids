@@ -11,6 +11,7 @@ from .config.orchestrator import (
 )
 from .detectors.factories import DETECTOR_FACTORIES
 from .detectors.loader import DetectorLoader
+from .detectors.packet_flow_features import PacketFlowFeatureProducer
 from .detectors.registry import DetectorRegistry
 from .latency import LatencyMetricsCollector
 from .pipeline.ordering import ReorderBuffer, ReorderConfig
@@ -73,6 +74,7 @@ def create_orchestrator(
         health={result.health.detector_name: result.health for result in load_results.values()},
         alert_store=AlertStore(),
         latency_metrics=LatencyMetricsCollector(),
+        packet_flow_features=PacketFlowFeatureProducer(),
     )
     orchestrator.runtime_configuration = runtime_config.as_dict()
     return orchestrator

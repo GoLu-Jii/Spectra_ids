@@ -5,7 +5,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field, ConfigDict
 
 PredictionStatus = Literal["DETECTED", "BENIGN", "INSUFFICIENT_CONTEXT", "REVIEW", "ERROR"]
-PredictionScoreType = Literal["probability", "anomaly"]
+PredictionScoreType = Literal["probability", "model_score", "anomaly"]
 
 
 class Prediction(BaseModel):

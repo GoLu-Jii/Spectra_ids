@@ -1,0 +1,11 @@
+#separator \x09
+#set_separator	,
+#empty_field	(empty)
+#unset_field	-
+#path	packet
+#open	2026-09-24-12-46-28
+#fields	ts	uid	src	dst	src_port	dst_port	proto	payload_len	tcp_flags	flow_complete	flow_start_ts
+#types	time	string	addr	addr	count	count	count	count	count	bool	time
+964953086.310131	CHPx1E1XOUcHnJDML5	207.158.192.40	10.20.1.31	53	53	17	433	-	F	-
+964953086.310131	CHPx1E1XOUcHnJDML5	207.158.192.40	10.20.1.31	53	53	17	-	-	T	964953086.310131
+#close	2026-09-24-12-46-28

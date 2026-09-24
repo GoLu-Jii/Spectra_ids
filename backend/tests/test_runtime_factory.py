@@ -93,6 +93,9 @@ def test_supplied_configuration_creates_fresh_per_flow_orchestrators(monkeypatch
     assert len(first.alert_store) == len(second.alert_store) == 0
     assert first.latency_metrics is not second.latency_metrics
     assert first.latency_metrics.observations == second.latency_metrics.observations == {}
+    assert first.packet_flow_features is not second.packet_flow_features
+    assert first.packet_flow_features.pending_flow_count == 0
+    assert second.packet_flow_features.pending_flow_count == 0
     assert first.ordering.config.maximum_lateness.total_seconds() == 5
     assert first.ordering.config.buffer_capacity == 4096
     assert first.ordering.config.late_event_behavior == "release"

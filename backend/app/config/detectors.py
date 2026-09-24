@@ -18,7 +18,7 @@ class DetectorConfig:
     feature_schema: str
     required_features: tuple[str, ...]
     threshold: float | None
-    score_type: Literal["probability", "anomaly"]
+    score_type: Literal["probability", "model_score", "anomaly"]
     artifact_path: str | None
     expected_format: ExpectedArtifactFormat | None
     dependencies: tuple[tuple[str, str | None], ...] = ()
@@ -40,7 +40,7 @@ DETECTOR_CONFIGS: dict[str, DetectorConfig] = {
             "Packet Length Mean", "Packet Length Std", "Protocol",
         ),
         threshold=0.13920332491397858,
-        score_type="probability",
+        score_type="model_score",
         artifact_path="detectors/ddos/spectra_ddos_detector.joblib",
         expected_format="joblib",
         dependencies=(("joblib", ">=1.4.0"), ("xgboost", ">=2.0.0")),
@@ -127,7 +127,7 @@ DETECTOR_CONFIGS: dict[str, DetectorConfig] = {
             "Bwd Packets/s", "FIN Flag Count",
         ),
         threshold=0.50166595,
-        score_type="probability",
+        score_type="model_score",
         artifact_path="detectors/port_scan/spectra_portscan_detector.json",
         expected_format="json",
         dependencies=(("joblib", ">=1.4.0"), ("xgboost", ">=2.0.0")),

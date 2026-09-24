@@ -9,6 +9,12 @@ from typing import Any, Callable, Mapping
 
 from ..detectors.base import BaseThreatDetector
 from ..detectors.health import DetectorHealth
+from ..detectors.packet_flow_features import (
+    CompletedFlowFeatures,
+    PacketFlowFeatureProducer,
+    select_contract_features,
+)
+from ..detectors.zeek_flow_features import detector_features_from_zeek
 from ..ingestion.events import NormalizedEvent
 from ..latency import LatencyMetricsCollector, LatencyTiming
 from ..schemas.alert import Alert
@@ -46,6 +52,7 @@ class RuntimeOrchestrator:
         alert_store: AlertStore | None = None,
         latency_metrics: LatencyMetricsCollector | None = None,
         alert_publisher: Callable[[Alert], Awaitable[None] | None] | None = None,
+        packet_flow_features: PacketFlowFeatureProducer | None = None,
     ) -> None:
         self.ordering = ordering
         self.windows = windows
@@ -54,6 +61,7 @@ class RuntimeOrchestrator:
         self.alert_store = alert_store
         self.latency_metrics = latency_metrics or LatencyMetricsCollector()
         self.alert_publisher = alert_publisher
+        self.packet_flow_features = packet_flow_features
         self.metrics = OrchestratorMetrics()
         self._runtime_failures: list[DetectorRuntimeFailure] = []
         self._scored_opportunities: set[
@@ -87,14 +95,21 @@ class RuntimeOrchestrator:
             self.metrics.events_rejected_or_late += 1
         alerts: list[Alert] = []
         for entry in outcome.released:
-            alerts.extend(self._process_ordered(entry.event, entry.event_id))
+            alerts.extend(
+                self._process_ordered(entry.event, entry.event_id, entry.arrival_index)
+            )
         return tuple(alerts)
 
     def flush(self) -> tuple[Alert, ...]:
         """Drain the reorder buffer and then flush pending detector windows."""
         alerts: list[Alert] = []
         for entry in self.ordering.flush():
-            alerts.extend(self._process_ordered(entry.event, entry.event_id))
+            alerts.extend(
+                self._process_ordered(entry.event, entry.event_id, entry.arrival_index)
+            )
+        if self.packet_flow_features is not None:
+            for incomplete in self.packet_flow_features.flush():
+                self._record_incomplete_flow(incomplete)
         if self.windows is not None:
             try:
                 emissions = self.windows.flush()
@@ -128,15 +143,35 @@ class RuntimeOrchestrator:
             ],
         }
 
-    def _process_ordered(self, event: NormalizedEvent, event_id: str) -> list[Alert]:
+    def _process_ordered(
+        self, event: NormalizedEvent, event_id: str, arrival_index: int
+    ) -> list[Alert]:
         self.metrics.events_processed += 1
         timing = self._timing_for_event(event)
         if timing is not None:
             timing.mark("ordered_at")
         alerts: list[Alert] = []
+        packet_flow: CompletedFlowFeatures | None = None
+        if self.packet_flow_features is not None and event.event_type.lower() == "packet":
+            packet_flow = self.packet_flow_features.observe(
+                event, arrival_sequence=arrival_index
+            )
         grouping_key = self._grouping_key(event)
         for detector_name in list(self.registry):
             detector = self.registry.get(detector_name)
+            contract_name = getattr(detector, "detector_name", detector_name)
+            if self.packet_flow_features is not None and contract_name in {
+                "ddos",
+                "portscan",
+            }:
+                if event.event_type.lower() != "packet" or packet_flow is None:
+                    continue
+                alert = self._invoke_packet_flow(
+                    detector_name, detector, packet_flow, event, event_id
+                )
+                if alert is not None:
+                    alerts.append(alert)
+                continue
             detector_health = self.health.get(detector_name)
             if detector_health is None or not detector_health.ready_for_inference:
                 reason = (
@@ -160,6 +195,111 @@ class RuntimeOrchestrator:
                 alerts.extend(self._invoke_emission(emission))
         return alerts
 
+    def _invoke_packet_flow(
+        self,
+        detector_name: str,
+        detector: BaseThreatDetector,
+        completed: CompletedFlowFeatures,
+        source_event: NormalizedEvent,
+        event_id: str,
+    ) -> Alert | None:
+        detector_health = self.health.get(detector_name)
+        if detector_health is None or not detector_health.ready_for_inference:
+            reason = (
+                detector_health.error_reason
+                if detector_health is not None and detector_health.error_reason
+                else "Detector is not ready_for_inference"
+            )
+            self._record_failure(detector_name, f"Skipped: {reason}")
+            return None
+        if completed.features is None:
+            self._record_failure(
+                detector_name,
+                "Skipped: packet-derived flow feature contract is incomplete: "
+                + "; ".join(completed.incomplete_reasons),
+            )
+            return None
+
+        features = select_contract_features(completed.features, detector.required_features)
+        if features is None:
+            missing = [
+                field for field in detector.required_features
+                if field not in completed.features
+            ]
+            self._record_failure(
+                detector_name,
+                "Skipped: packet-derived flow output is missing required detector inputs: "
+                + ", ".join(missing),
+            )
+            return None
+
+        flow_event = NormalizedEvent(
+            observed_at=completed.observed_at,
+            event_type="flow_features",
+            source_ip=completed.source_ip,
+            destination_ip=completed.destination_ip,
+            source_port=completed.source_port,
+            destination_port=completed.destination_port,
+            protocol=(str(completed.protocol) if completed.protocol is not None else None),
+            flow_id=completed.flow_id,
+            raw_metadata={
+                **source_event.raw_metadata,
+                "packet_flow_features": dict(completed.features),
+                "feature_provenance": dict(completed.provenance),
+            },
+        )
+        identity = (detector_name, event_id)
+        if identity in self._scored_events:
+            return None
+        self._scored_events.add(identity)
+
+        context = {
+            "event_id": completed.flow_id or event_id,
+            "flow_start_at": completed.flow_start_at,
+            "flow_end_at": completed.observed_at,
+            "packet_count": completed.packet_count,
+            "feature_provenance": dict(completed.provenance),
+        }
+        timing = self._timing_for_event(source_event)
+        if timing is not None:
+            timing.mark("feature_ready_at")
+            timing.mark("inference_started_at")
+        try:
+            self.metrics.detector_invocations += 1
+            prediction = detector.predict(features, context)
+            if not isinstance(prediction, Prediction):
+                raise TypeError("adapter did not return Prediction")
+        except Exception as exc:
+            if timing is not None:
+                timing.mark("inference_finished_at")
+            self._record_failure(detector_name, f"Detector invocation failed: {exc}")
+            return None
+        if timing is not None:
+            timing.mark("inference_finished_at")
+        if prediction.status != "DETECTED":
+            return None
+
+        alert_identity = "|".join(
+            (prediction.detector_name, prediction.detector_version, event_id)
+        )
+        try:
+            alert = self._prediction_to_alert(prediction, flow_event, alert_identity)
+        except Exception as exc:
+            self._record_failure(detector_name, f"Alert conversion failed: {exc}")
+            return None
+        self._record_alert(alert, prediction.detector_name, timing)
+        return alert
+
+    def _record_incomplete_flow(self, completed: CompletedFlowFeatures) -> None:
+        reason = (
+            "Skipped: packet-derived flow feature contract is incomplete: "
+            + "; ".join(completed.incomplete_reasons)
+        )
+        for detector_name in list(self.registry):
+            detector = self.registry.get(detector_name)
+            if getattr(detector, "detector_name", detector_name) in {"ddos", "portscan"}:
+                self._record_failure(detector_name, reason)
+
     def _invoke_per_flow(
         self, detector_name: str, event: NormalizedEvent, event_id: str
     ) -> Alert | None:
@@ -169,9 +309,10 @@ class RuntimeOrchestrator:
             return None
         self._scored_events.add(identity)
         detector = self.registry.get(detector_name)
+        features = detector_features_from_zeek(event.raw_metadata)
         missing = [
             feature for feature in detector.required_features
-            if feature not in event.raw_metadata
+            if feature not in features
         ]
         if missing:
             self._record_failure(
@@ -188,7 +329,7 @@ class RuntimeOrchestrator:
             timing.mark("inference_started_at")
         try:
             self.metrics.detector_invocations += 1
-            prediction = detector.predict(dict(event.raw_metadata), context)
+            prediction = detector.predict(features, context)
             if not isinstance(prediction, Prediction):
                 raise TypeError("adapter did not return Prediction")
         except Exception as exc:
@@ -241,10 +382,11 @@ class RuntimeOrchestrator:
         if source_event is None:
             self._record_failure(emission.detector_name, "Skipped: empty detector context")
             return []
+        features = detector_features_from_zeek(source_event.raw_metadata)
         missing = [
             feature
             for feature in detector.required_features
-            if feature not in source_event.raw_metadata
+            if feature not in features
         ]
         if missing:
             self._record_failure(
@@ -267,7 +409,7 @@ class RuntimeOrchestrator:
             timing.mark("inference_started_at")
         try:
             self.metrics.detector_invocations += 1
-            prediction = detector.predict(dict(source_event.raw_metadata), context)
+            prediction = detector.predict(features, context)
             if not isinstance(prediction, Prediction):
                 raise TypeError("adapter did not return Prediction")
         except Exception as exc:
@@ -354,6 +496,15 @@ class RuntimeOrchestrator:
             model_version=prediction.model_version,
             feature_schema=prediction.feature_schema,
             raw_model_probability=confidence,
+            raw_model_score=(
+                prediction.raw_score if prediction.score_type == "model_score" else None
+            ),
+            score_type=prediction.score_type,
+            feature_provenance=(
+                event.raw_metadata.get("feature_provenance")
+                if isinstance(event.raw_metadata.get("feature_provenance"), dict)
+                else None
+            ),
             timing=None,
             latency_durations={},
         )

@@ -30,6 +30,7 @@ Thumbs.db
 
 # Runtime
 *.log
+!backend/tests/fixtures/zeek/dns53/packet.log
 tmp/
 temp/
 

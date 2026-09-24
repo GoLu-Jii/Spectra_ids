@@ -102,7 +102,7 @@ def test_prediction_normalization_and_metadata_preservation():
     prediction = adapter.predict({"Destination Port": 443}, {"flow_id": "flow-1"})
 
     assert prediction.status == "BENIGN"
-    assert prediction.score_type == "probability"
+    assert prediction.score_type == "model_score"
     assert prediction.raw_score == 0.01
     assert prediction.threshold == 0.50166595
     assert prediction.detector_name == "portscan"
@@ -132,3 +132,4 @@ def test_actual_fixture_runtime_is_separate_from_adapter_tests():
         prediction = result.adapter.predict(flow, {"fixture": path.name})
         assert prediction.status in {"BENIGN", "DETECTED"}
         assert prediction.raw_score is not None
+        assert prediction.score_type == "model_score"

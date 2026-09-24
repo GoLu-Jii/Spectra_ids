@@ -65,11 +65,6 @@ class DetectorAdapter(BaseThreatDetector):
                 "Detector output must be a Prediction or mapping; raw scores are not accepted"
             )
 
-        # The current DDoS and Port Scan wrappers call predict_proba output
-        # "model_score". Their raw score is a probability, so normalize only
-        # that documented wrapper label to the frozen Prediction vocabulary.
-        if data.get("score_type") == "model_score":
-            data["score_type"] = self._config.score_type
         self._reject_conflicting_metadata(data)
         try:
             return Prediction(
