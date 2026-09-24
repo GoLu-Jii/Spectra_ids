@@ -112,6 +112,7 @@ function DetailItem({ label, value }) {
 
 function RuntimeStatus({ health, error }) {
   const fields = ['service_started', 'service_ready', 'worker_alive', 'model_validation_ok', 'storage_ok', 'capture_connected', 'runtime_mode']
+  const zeek = health?.zeek_runtime
   return (
     <section className="panel status-panel">
       <div className="panel-title"><span><Server size={16} /> Runtime status</span><span className="live-mark"><CircleDot size={13} /> API</span></div>
@@ -119,6 +120,7 @@ function RuntimeStatus({ health, error }) {
       <div className="status-list">
         <div className="status-line" key="status"><span>status</span><HealthValue value={health?.status} /></div>
         {fields.map((field) => <div className="status-line" key={field}><span>{field.replaceAll('_', ' ')}</span><HealthValue value={health?.[field]} /></div>)}
+        {['runtime_mode', 'zeek_source_available', 'files_consumed', 'events_ingested', 'normalization_errors', 'zeek_parse_errors', 'events_rejected_or_late', 'late_events', 'too_late_events', 'source_errors', 'tail_overflow_events', 'running'].map((field) => <div className="status-line" key={`zeek-${field}`}><span>zeek {field.replaceAll('_', ' ')}</span><HealthValue value={zeek?.[field] == null ? null : Array.isArray(zeek[field]) ? zeek[field].join(', ') || 'none' : zeek[field]} /></div>)}
       </div>
       {health?.detector_health && <section className="detail-section health-extra"><h3>Detector health</h3><pre>{JSON.stringify(health.detector_health, null, 2)}</pre></section>}
       {Array.isArray(health?.runtime_failures) && health.runtime_failures.length > 0 && <section className="detail-section health-extra"><h3>Runtime failures</h3><pre>{JSON.stringify(health.runtime_failures, null, 2)}</pre></section>}

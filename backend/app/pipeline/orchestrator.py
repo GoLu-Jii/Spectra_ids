@@ -65,10 +65,12 @@ class RuntimeOrchestrator:
         self,
         event: NormalizedEvent,
         event_id: str | None = None,
+        *,
+        zeek_available_at: datetime | None = None,
     ) -> tuple[Alert, ...]:
         """Accept one canonical event and return newly produced alerts."""
         self.metrics.events_received += 1
-        timing = LatencyTiming.start(event.observed_at)
+        timing = LatencyTiming.start(event.observed_at, zeek_available_at=zeek_available_at)
         identity = event_id or event.flow_id or f"received-{self.metrics.events_received}"
         self._timings[identity] = timing
         if event.flow_id is not None:

@@ -14,38 +14,35 @@ class ZeekReadError(ValueError):
 def iter_zeek_records(path: str | Path) -> Iterator[dict[str, Any]]:
     """Yield records from Zeek JSON-lines or tab-separated logs."""
     input_path = Path(path)
+    parser = ZeekRecordParser(input_path)
     with input_path.open("r", encoding="utf-8", newline="") as stream:
-        first_data_line: str | None = None
-        fields: list[str] | None = None
         for line_number, line in enumerate(stream, start=1):
-            stripped = line.rstrip("\r\n")
-            if not stripped:
-                continue
-            if stripped.startswith("#fields"):
-                fields = stripped[len("#fields") :].lstrip("\t ").split("\t")
-                continue
-            if stripped.startswith("#"):
-                continue
-            first_data_line = stripped
-            break
+            record = parser.parse(line, line_number)
+            if record is not None:
+                yield record
 
-        if first_data_line is None:
-            return
 
-        event_type = input_path.stem if input_path.stem in {"conn", "dns", "ssl", "tls", "packet"} else None
-        if fields is not None:
-            yield _parse_tsv(first_data_line, fields, line_number, event_type)
-            for line_number, line in enumerate(stream, start=line_number + 1):
-                stripped = line.rstrip("\r\n")
-                if stripped and not stripped.startswith("#"):
-                    yield _parse_tsv(stripped, fields, line_number, event_type)
-            return
+class ZeekRecordParser:
+    """Incremental line decoder shared by file reads and the live tailer."""
 
-        yield _parse_json(first_data_line, line_number)
-        for line_number, line in enumerate(stream, start=line_number + 1):
-            stripped = line.strip()
-            if stripped:
-                yield _parse_json(stripped, line_number)
+    def __init__(self, path: str | Path) -> None:
+        input_path = Path(path)
+        self.event_type = input_path.stem if input_path.stem in {"conn", "dns", "ssl", "tls", "packet"} else None
+        self.fields: list[str] | None = None
+
+    def parse(self, line: str, line_number: int) -> dict[str, Any] | None:
+        stripped = line.rstrip("\r\n")
+        if not stripped or stripped.startswith("#") and not stripped.startswith("#fields"):
+            return None
+        if stripped.startswith("#fields"):
+            self.fields = stripped[len("#fields") :].lstrip("\t ").split("\t")
+            return None
+        if self.fields is not None:
+            return _parse_tsv(stripped, self.fields, line_number, self.event_type)
+        record = _parse_json(stripped, line_number)
+        if self.event_type is not None:
+            record.setdefault("event_type", self.event_type)
+        return record
 
 
 def read_zeek_records(path: str | Path) -> list[dict[str, Any]]:

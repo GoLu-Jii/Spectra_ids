@@ -61,6 +61,11 @@ class AlertDelivery:
                 except asyncio.CancelledError:
                     pass
 
+    async def close_all(self) -> None:
+        """Cancel sender tasks and forget all clients during service shutdown."""
+        for key in list(self.clients):
+            await self.disconnect(key)
+
     def publish(self, alert: Alert) -> None:
         """Queue an alert for each client without blocking the producer."""
         for key, client in list(self.clients.items()):
