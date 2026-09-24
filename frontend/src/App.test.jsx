@@ -10,6 +10,8 @@ describe('dashboard', () => {
     const html = renderToStaticMarkup(<App />)
     expect(html).toContain('SPECTRA')
     expect(html).toContain('No alerts have been delivered.')
+    expect(html).toContain('Enabled: DDoS and Port Scan.')
+    expect(html).toContain('training parity is incomplete')
   })
 
   it('merges repeated alert IDs without duplicating rows and retains the received payload', () => {

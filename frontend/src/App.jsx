@@ -122,6 +122,11 @@ function RuntimeStatus({ health, error }) {
         {fields.map((field) => <div className="status-line" key={field}><span>{field.replaceAll('_', ' ')}</span><HealthValue value={health?.[field]} /></div>)}
         {['runtime_mode', 'zeek_source_available', 'files_consumed', 'events_ingested', 'normalization_errors', 'zeek_parse_errors', 'events_rejected_or_late', 'late_events', 'too_late_events', 'source_errors', 'tail_overflow_events', 'running'].map((field) => <div className="status-line" key={`zeek-${field}`}><span>zeek {field.replaceAll('_', ' ')}</span><HealthValue value={zeek?.[field] == null ? null : Array.isArray(zeek[field]) ? zeek[field].join(', ') || 'none' : zeek[field]} /></div>)}
       </div>
+      <section className="detail-section health-extra">
+        <h3>P0 detector scope</h3>
+        <p>Enabled: DDoS and Port Scan. Other detector families are not enabled in the P0 runtime.</p>
+        <p>C2 beaconing, DNS tunnelling, and data exfiltration remain unavailable for production telemetry; training parity is incomplete. DGA, TLS malware, and QUIC are not integrated in P0.</p>
+      </section>
       {health?.detector_health && <section className="detail-section health-extra"><h3>Detector health</h3><pre>{JSON.stringify(health.detector_health, null, 2)}</pre></section>}
       {Array.isArray(health?.runtime_failures) && health.runtime_failures.length > 0 && <section className="detail-section health-extra"><h3>Runtime failures</h3><pre>{JSON.stringify(health.runtime_failures, null, 2)}</pre></section>}
     </section>
