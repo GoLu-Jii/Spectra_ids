@@ -19,3 +19,16 @@ Task 10 provides a bounded Zeek file tailer and `ZeekRuntime` adapter. Configure
 See [docs/LIVE_ZEEK_RUNTIME.md](docs/LIVE_ZEEK_RUNTIME.md) for environment variables and the Linux/WSL passive sensor procedure.
 
 See [docs/BENCHMARKING.md](docs/BENCHMARKING.md) for reproducible replay benchmarking and metric limitations.
+
+
+
+
+in virtual environment
+
+pip install -r requirements.txt
+
+python -m uvicorn backend.app.p0_demo:app --host 127.0.0.1 --port 8000 --reload
+
+cd frontend_demo
+npm install
+npm run dev

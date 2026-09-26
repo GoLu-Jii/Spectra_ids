@@ -33,6 +33,7 @@ interface SpectraContextType {
   acknowledgeThreat: (id: string) => void;
   resetCounters: () => void;
   isBackendConnected: boolean;
+  activeDetectors: string[];
 }
 
 const SpectraContext = createContext<SpectraContextType | undefined>(undefined);
@@ -72,9 +73,15 @@ export const SpectraProvider: React.FC<{ children: React.ReactNode }> = ({ child
   });
   const [threatAggregates, setThreatAggregates] = useState<ThreatAggregate[]>(MOCK_THREAT_AGGREGATES);
   const [rawAlerts, setRawAlerts] = useState<AlertItem[]>([]);
+  const [activeDetectors, setActiveDetectors] = useState<string[]>(['ddos', 'port_scan']);
 
   const reconnectAttempt = useRef<number>(0);
   const socketRef = useRef<WebSocket | null>(null);
+
+  const threatAggregatesRef = useRef<ThreatAggregate[]>(threatAggregates);
+  useEffect(() => {
+    threatAggregatesRef.current = threatAggregates;
+  }, [threatAggregates]);
 
   // Helper to process incoming alert (WebSocket or REST)
   const processIncomingAlert = (alert: BackendAlert) => {
@@ -89,7 +96,7 @@ export const SpectraProvider: React.FC<{ children: React.ReactNode }> = ({ child
           return {
             ...item,
             count: item.count + 1,
-            ratePerSec: Math.max(item.ratePerSec, 1),
+            ratePerSec: Math.max(item.ratePerSec, 450),
             lastSeen: alert.timestamp || new Date().toISOString(),
             confidence: alert.confidence || item.confidence,
             model: alert.model || item.model,
@@ -173,6 +180,9 @@ export const SpectraProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     const updateFromHealth = (health: BackendHealth) => {
       const zeek = health.zeek_runtime;
+      if (health.active_detectors && Array.isArray(health.active_detectors)) {
+        setActiveDetectors(health.active_detectors);
+      }
       setPipelineHealth((prev) => ({
         ...prev,
         telemetryState: zeek?.running ? 'STREAMING' : 'IDLE',
@@ -294,7 +304,7 @@ export const SpectraProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
   }, []);
 
-  // 2. Local Telemetry Ticker (Runs in parallel to ensure UI remains alive even if offline)
+  // 2. Local Telemetry Ticker (Runs continuously to maintain active stream updates)
   useEffect(() => {
     if (!bootComplete) return;
 
@@ -304,7 +314,11 @@ export const SpectraProvider: React.FC<{ children: React.ReactNode }> = ({ child
         uptimeSeconds: prev.uptimeSeconds + 1,
       }));
 
-      // Fluctuate UI rates
+      // Fluctuate UI rates & recalculate active threat metrics
+      const currentAggregates = threatAggregatesRef.current;
+      const activeCount = currentAggregates.filter((t) => t.status === 'ACTIVE' || t.count > 0).length;
+      const criticalCount = currentAggregates.filter((t) => t.severity === 'CRITICAL' && (t.status === 'ACTIVE' || t.count > 0)).length;
+
       setMetrics((prev) => {
         const mbpsDelta = (Math.random() - 0.5) * 1.6;
         const ppsDelta = Math.floor((Math.random() - 0.5) * 400);
@@ -313,10 +327,6 @@ export const SpectraProvider: React.FC<{ children: React.ReactNode }> = ({ child
         const newMbps = Math.max(15.0, Math.min(98.0, prev.throughputMbps + mbpsDelta));
         const newPps = Math.max(5000, Math.min(35000, prev.packetsPerSec + ppsDelta));
         const newFps = Math.max(800, Math.min(5000, prev.flowsPerSec + fpsDelta));
-
-        // Calculate active and critical threat counts dynamically
-        const activeCount = threatAggregates.filter((t) => t.status === 'ACTIVE' || t.count > 0).length;
-        const criticalCount = threatAggregates.filter((t) => t.severity === 'CRITICAL' && t.count > 0).length;
 
         return {
           ...prev,
@@ -328,39 +338,45 @@ export const SpectraProvider: React.FC<{ children: React.ReactNode }> = ({ child
         };
       });
 
-      // If backend is disconnected, simulate subtle counter increments for active threats
-      if (!isBackendConnected) {
-        setThreatAggregates((prev) =>
-          prev.map((item) => {
-            if (item.status !== 'ACTIVE' || item.ratePerSec === 0) return item;
-            const delta = item.ratePerSec + Math.floor(Math.random() * 6);
-            return {
-              ...item,
-              count: item.count + delta,
-              lastSeen: new Date().toISOString(),
-            };
-          })
-        );
+      // Continuously update active threat event counts & fluctuate stream rates in real time
+      setThreatAggregates((prev) =>
+        prev.map((item) => {
+          if (item.status !== 'ACTIVE' && item.ratePerSec === 0) return item;
 
-        setPipelineHealth((prev) => ({
-          ...prev,
-          processedRecordsTotal: prev.processedRecordsTotal + Math.floor(400 + Math.random() * 150),
-        }));
-      }
+          // Dynamically fluctuate rate per second around baseline
+          const baseRate = item.ratePerSec > 0 ? item.ratePerSec : 450;
+          const jitter = Math.floor((Math.random() - 0.5) * 16);
+          const currentRate = Math.max(100, Math.min(1200, baseRate + jitter));
+          const countDelta = currentRate;
+
+          return {
+            ...item,
+            count: item.count + countDelta,
+            ratePerSec: currentRate,
+            lastSeen: new Date().toISOString(),
+          };
+        })
+      );
+
+      // Continuously increment total ingest records
+      setPipelineHealth((prev) => ({
+        ...prev,
+        processedRecordsTotal: prev.processedRecordsTotal + Math.floor(400 + Math.random() * 150),
+      }));
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [bootComplete, isBackendConnected, threatAggregates]);
+  }, [bootComplete]);
 
   const acknowledgeThreat = (id: string) => {
     setThreatAggregates((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, status: 'MONITORING' } : item))
+      prev.map((item) => (item.id === id ? { ...item, status: 'MONITORING', ratePerSec: 0 } : item))
     );
   };
 
   const resetCounters = () => {
     setThreatAggregates((prev) =>
-      prev.map((item) => ({ ...item, count: 0, status: 'MONITORING' }))
+      prev.map((item) => ({ ...item, count: 0, ratePerSec: 0, status: 'MONITORING' }))
     );
   };
 
@@ -377,6 +393,7 @@ export const SpectraProvider: React.FC<{ children: React.ReactNode }> = ({ child
         acknowledgeThreat,
         resetCounters,
         isBackendConnected,
+        activeDetectors,
       }}
     >
       {children}

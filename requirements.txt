@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+websockets
+pydantic
+numpy
+pandas<3.0.0
+scikit-learn
+xgboost
+joblib
+pytest
+httpx

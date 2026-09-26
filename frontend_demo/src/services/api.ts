@@ -16,6 +16,7 @@ export interface BackendHealth {
   model_validation_ok?: boolean;
   storage_ok?: boolean;
   runtime_mode?: string;
+  active_detectors?: string[];
   zeek_runtime?: {
     runtime_mode?: string;
     zeek_source_available?: boolean;
