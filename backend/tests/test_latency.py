@@ -67,3 +67,13 @@ def test_missing_optional_timestamps_do_not_create_fake_latency():
     assert "capture_to_alert" not in durations
     assert "delivery_time" not in durations
     assert "capture_to_dashboard" not in durations
+
+
+def test_replay_keeps_capture_timing_unavailable():
+    timing = LatencyTiming.start(BASE, capture_timing_available=False)
+    timing.mark("alert_created_at", now=lambda: BASE + timedelta(days=1))
+    timing.mark("delivered_at", now=lambda: BASE + timedelta(days=1, seconds=1))
+
+    assert "capture_to_alert" not in timing.durations()
+    assert "capture_to_dashboard" not in timing.durations()
+    assert timing.model_dump()["observed_at"] is None
