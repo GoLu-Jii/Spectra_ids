@@ -91,6 +91,9 @@ function Detail({ alert }) {
         <DetailItem label="Timestamp" value={formatTimestamp(alert.timestamp)} />
         <DetailItem label="Flow ID" value={alert.flow_id} />
         <DetailItem label="Confidence" value={alert.confidence == null ? null : `${(alert.confidence * 100).toFixed(1)}%`} />
+        <DetailItem label="Score type" value={alert.score_type} />
+        <DetailItem label="Model score" value={alert.raw_model_score} />
+        <DetailItem label="Calibrated confidence" value={alert.calibrated_confidence} />
         <DetailItem label="Source / destination" value={endpoints} />
         <DetailItem label="Protocol" value={alert.protocol} />
         <DetailItem label="Model" value={alert.model} />
@@ -111,7 +114,7 @@ function DetailItem({ label, value }) {
 }
 
 function RuntimeStatus({ health, error }) {
-  const fields = ['service_started', 'service_ready', 'worker_alive', 'model_validation_ok', 'storage_ok', 'capture_connected', 'runtime_mode']
+  const fields = ['service_started', 'service_ready', 'worker_alive', 'model_validation_ok', 'storage_ok', 'capture_connected', 'runtime_mode', 'active_detectors']
   const zeek = health?.zeek_runtime
   return (
     <section className="panel status-panel">

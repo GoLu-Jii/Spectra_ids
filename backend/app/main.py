@@ -78,6 +78,11 @@ async def health() -> dict[str, object]:
         "capture_connected": None,
         "runtime_mode": app.state.runtime_config.mode,
         "zeek_runtime": state,
+        "active_detectors": [
+            name
+            for name, item in runtime.get("detector_health", {}).items()
+            if item.get("registered")
+        ],
         **runtime,
     }
 

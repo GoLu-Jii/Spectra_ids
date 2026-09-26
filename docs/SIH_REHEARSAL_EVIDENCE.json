@@ -1,0 +1,267 @@
+{
+  "task": "Task 16 — Final SPECTRA P0 SIH rehearsal",
+  "baseline_commit": "296ff07f326756a37f424426b564fcbd4156d2e6",
+  "working_tree_at_start": "clean",
+  "optional_runtime_stash": "stash@{0} was left untouched",
+  "environment": {
+    "os": "Windows 11 build 26200",
+    "python": "3.13.3",
+    "uvicorn": "0.53.0",
+    "fastapi": "0.141.1",
+    "starlette": "1.7.0",
+    "websockets": "15.0.1",
+    "websockets_installed_in_venv": true,
+    "websocket_dependency_manifest": "backend/requirements.txt",
+    "xgboost": "3.4.1",
+    "scikit_learn": "1.9.1",
+    "zeek_for_existing_logs": "8.0.10",
+    "zeek_queried_during_task": true,
+    "zeek_query": "wsl.exe -e bash -lc '/opt/zeek/bin/zeek --version' returned Zeek 8.0.10; log generation was not rerun because prepared outputs and hashes matched"
+  },
+  "fixture": {
+    "classification": "CONTROLLED SYNTHETIC OFFLINE TRAFFIC; packets never transmitted",
+    "path": "C:\\Users\\Kabir\\AppData\\Local\\Temp\\SpectraTask12E\\controlled_synthetic_offline.pcap",
+    "generator": "C:\\Users\\Kabir\\AppData\\Local\\Temp\\SpectraTask12E\\build_controlled_pcap.py",
+    "generator_sha256": "d98c02132f84610b0bfd4186e123fdadec6436fecca4ab9c00f912971931aaa8",
+    "sha256": "2660a4706b2471d394e05cd668342350c380a04878511acc9440c45bbb2e8f4f",
+    "size_bytes": 81796,
+    "packets": 82,
+    "composition": {"tcp_syn_probes": 8, "tcp_rst_ack_responses": 8, "udp_packets": 64, "udp_payload_bytes_each": 1200}
+  },
+  "zeek_generation": {
+    "command": "/opt/zeek/bin/zeek -C -r controlled_synthetic_offline.pcap '/mnt/c/All Projects/Spectra_ids/backend/zeek/packet_flow_features.zeek'",
+    "rerun_during_task": false,
+    "directory": "C:\\Users\\Kabir\\AppData\\Local\\Temp\\SpectraTask12E",
+    "logs": [
+      {"file": "packet.log", "records": 92, "composition": "82 packet observations + 10 flow-end markers", "size_bytes": 8445, "sha256": "586fa6b3518ac54cd6d49ce5d5d761e0bdab626fce2bf5fbca475a8a24ffd589", "replayed": true},
+      {"file": "conn.log", "records": 10, "size_bytes": 1685, "sha256": "ef83538f8454ff211306ff3e68993b2c84b8f36b6f063bd51f58f22e788888e3", "replayed": false},
+      {"file": "packet_filter.log", "size_bytes": 278, "sha256": "c69551b83a4f90b5d79b84d9e0be744649d4257ad5f77ed3ab13ad23521f9888", "replayed": false},
+      {"file": "weird.log", "size_bytes": 1318, "sha256": "9422dfc09328f4591effb9cb33cb2a86ab2c1404fef724e4c04e173ee252b0b1", "replayed": false}
+    ]
+  },
+  "runtime_configuration": {
+    "maximum_lateness_seconds": 5,
+    "buffer_capacity": 4096,
+    "late_event_behavior": "release",
+    "overflow_behavior": "release_oldest",
+    "window_config": null
+  },
+  "models": [
+    {"detector": "ddos", "model": "XGBoost", "model_version": "1.0", "threshold": 0.13920332491397858, "invocations": 10},
+    {"detector": "port_scan", "model": "XGBoost", "model_version": "1.0", "threshold": 0.50166595, "invocations": 10}
+  ],
+  "replay_results": {
+    "evidence_file": "C:\\Users\\Kabir\\AppData\\Local\\Temp\\SpectraTask12E\\packet_path_acceptance.json",
+    "evidence_sha256": "57ccd35191216c1a3f773f97db05c68abdc0a531fef481f02d62b203debeb318",
+    "records_read": 92,
+    "events_processed": 92,
+    "completed_flows": 10,
+    "detector_invocations": 20,
+    "ddos": {"invocations": 10, "tcp_detected": 9, "udp_benign": 1, "tcp_model_score": 0.4257778823375702, "udp_model_score": 0.062230102717876434},
+    "port_scan": {"invocations": 10, "alerts": 0, "maximum_model_score": 0.3100384771823883},
+    "alert_ids": [
+      "ALT-059cd13b3195c407", "ALT-75c786384235e031", "ALT-80bdcb5ea6555526",
+      "ALT-dbd504edd7c00645", "ALT-daa7374c013ffac8", "ALT-9d77b1e855d6b0e1",
+      "ALT-128af20bb9d0bfa3", "ALT-0c3e3f9a08f947b7", "ALT-7587ecf6da417f57"
+    ],
+    "late_events": 7,
+    "too_late_events": 0,
+    "parse_errors": 0,
+    "normalization_errors": 0,
+    "detector_failures": 0,
+    "application_event_drops": 0,
+    "queue_overflow_events": 0,
+    "capture_loss": null,
+    "zeek_log_loss": null,
+    "capture_to_alert": null,
+    "capture_to_dashboard": null
+  },
+  "rest_websocket_rehearsal": {
+    "method": "FastAPI TestClient; configured P0 orchestrator; /ws connected before invoking the existing Zeek replay reader",
+    "health_status": 200,
+    "stats_status": 200,
+    "alerts_status": 200,
+    "alert_detail_status": 200,
+    "active_detectors": ["ddos", "portscan"],
+    "alert_store_count": 9,
+    "websocket_deliveries": 9,
+    "websocket_ids_match_alert_store": true,
+    "client_drops": 0,
+    "duplicate_alerts_after_second_flush": 0,
+    "timestamp_matches_detail": true,
+    "capture_time_latency": "unavailable for replay"
+  },
+  "delivery_path_investigation": {
+    "alert_generation_to_publish": "RuntimeOrchestrator._record_alert increments alerts_produced, stores the alert, then calls alert_publisher once for each successfully stored alert",
+    "publish_to_client_queue": "AlertDelivery.publish iterates every client registered at publish time and enqueues one Alert plus its model_dump(mode='json') payload in that client's queue",
+    "client_registration": "After websocket.accept() returns; client is then inserted in AlertDelivery.clients and a sender task is created",
+    "client_removal": "On receive loop exit/disconnect; sender task is cancelled. Application shutdown also closes all clients",
+    "queue_capacity": 32,
+    "queue_overflow": "Per-client QueueFull increments client_drops and schedules that client for disconnect; other clients are still iterated",
+    "sender_lifecycle": "Sender loops queue.get/send_json until send failure, disconnect cancellation, or app shutdown; replay EOF alone does not close it",
+    "payload_matches_rest": "REST and WS both serialize the same stored Alert model; WS uses model_dump(mode='json')",
+    "frontend_handling": "Native WebSocket onmessage validates alert_id/timestamp/threat_class, then mergeAlerts updates by alert_id; a REST duplicate remains one row but is still processed. REST is only fetched on mount and selected-detail changes; no alert polling exists",
+    "normal_startup_order": "FastAPI lifespan calls runtime.start() before yield; REPLAY task starts before Uvicorn serves requests. No public replay trigger exists"
+  },
+  "controlled_asgi_websocket_replay": {
+    "status": "PASS for controlled server fan-out; does not establish deterministic browser startup",
+    "method": "FastAPI TestClient with the real P0 app; TEST mode suppressed lifespan auto-start, /ws was accepted, then the existing Zeek replay reader ran against the prepared packet.log",
+    "connected_at": "2026-09-26T15:29:57.868474+00:00",
+    "connected_clients_before_replay": 1,
+    "replay_started_at": "2026-09-26T15:29:57.868496+00:00",
+    "first_alert_created_at": "2026-09-26T15:29:57.887709+00:00",
+    "last_alert_created_at": "2026-09-26T15:29:58.050739+00:00",
+    "replay_completed_at": "2026-09-26T15:29:58.058614+00:00",
+    "records_read": 92,
+    "events_ingested": 92,
+    "events_processed": 92,
+    "alerts_produced": 9,
+    "received_alert_ids": [
+      "ALT-059cd13b3195c407", "ALT-75c786384235e031", "ALT-80bdcb5ea6555526",
+      "ALT-dbd504edd7c00645", "ALT-daa7374c013ffac8", "ALT-9d77b1e855d6b0e1",
+      "ALT-128af20bb9d0bfa3", "ALT-0c3e3f9a08f947b7", "ALT-7587ecf6da417f57"
+    ],
+    "alert_store_ids_match": true,
+    "received_count": 9,
+    "duplicates": [],
+    "alert_detail_statuses": [200, 200, 200, 200, 200, 200, 200, 200, 200],
+    "delivery_metrics": {"delivered_alerts": 9, "client_drops": 0, "send_failures": 0, "queue_peak_depth": 8, "queue_current_depth": 0},
+    "disconnected_at": "2026-09-26T15:29:58.070288+00:00",
+    "connected_clients_after_disconnect": 0
+  },
+  "live_asgi_rehearsal": {
+    "command": ".\\.venv\\Scripts\\python.exe -m uvicorn backend.app.p0_demo:app --host 127.0.0.1 --port 8000",
+    "runtime_mode": "REPLAY",
+    "input_file": "packet.log",
+    "records_read": 92,
+    "events_ingested": 92,
+    "events_received": 92,
+    "events_processed": 92,
+    "completed_flows": 10,
+    "detector_invocations": 20,
+    "detector_invocations_by_detector": {"ddos": 10, "portscan": 10},
+    "detector_invocation_split_basis": "Ten completed flows; both registered P0 detectors are invoked once per completed flow; aggregate ASGI counter was 20",
+    "alerts_produced": 9,
+    "ddos_alerts": 9,
+    "portscan_alerts": 0,
+    "alert_model_score": 0.4257778823375702,
+    "alert_score_type": "model_score",
+    "alert_ids": [
+      "ALT-059cd13b3195c407", "ALT-75c786384235e031", "ALT-80bdcb5ea6555526",
+      "ALT-dbd504edd7c00645", "ALT-daa7374c013ffac8", "ALT-9d77b1e855d6b0e1",
+      "ALT-128af20bb9d0bfa3", "ALT-0c3e3f9a08f947b7", "ALT-7587ecf6da417f57"
+    ],
+    "active_detectors": ["ddos", "portscan"],
+    "late_events": 7,
+    "too_late_events": 0,
+    "events_rejected_or_late": 7,
+    "parse_errors": 0,
+    "normalization_errors": 0,
+    "source_errors": 0,
+    "detector_failures": 0,
+    "application_event_drops": 0,
+    "normal_browser_queue_peak_depth": 0,
+    "queue_overflow_events": 0,
+    "capture_to_alert": null,
+    "capture_to_dashboard": null,
+    "eof_flush": {
+      "runtime_running_after_eof": false,
+      "input_records_equal_processed_events": true,
+      "processed_events": 92,
+      "alert_count_after_eof_flush": 9,
+      "duplicate_alerts": 0,
+      "evidence": "ASGI EOF counters reached 92/92; the replay EOF flush regression test passed in the backend suite"
+    },
+    "rest": {
+      "health_status": 200,
+      "stats_status": 200,
+      "alerts_status": 200,
+      "alert_detail_statuses": [200, 200, 200, 200, 200, 200, 200, 200, 200]
+    },
+    "websocket": {
+      "status": "PARTIAL; full ID-set acceptance not met",
+      "observation_run": "Separate normal Uvicorn run with the standalone native Node WebSocket client; not the browser run below",
+      "client": "Native Node WebSocket client connected directly to Uvicorn during the final replay/EOF alert publication",
+      "connection_established": true,
+      "handshake_status": "accepted by Uvicorn",
+      "no_supported_library_warning": false,
+      "client_connected_before_replay_completion": true,
+      "delivered_alert_count": 1,
+      "delivered_alert_ids": ["ALT-7587ecf6da417f57"],
+      "missing_alert_ids": [
+        "ALT-059cd13b3195c407", "ALT-75c786384235e031", "ALT-80bdcb5ea6555526",
+        "ALT-dbd504edd7c00645", "ALT-daa7374c013ffac8", "ALT-9d77b1e855d6b0e1",
+        "ALT-128af20bb9d0bfa3", "ALT-0c3e3f9a08f947b7"
+      ],
+      "alert_store_count": 9,
+      "delivered_ids_are_in_alert_store": true,
+      "all_alert_store_ids_received": false,
+      "duplicate_ids": [],
+      "delivered_alert_detail_status": 200,
+      "delivered_alert_model_score": 0.4257778823375702,
+      "clean_disconnect": true,
+      "delivery_metrics": {"delivered_alerts": 1, "client_drops": 0, "send_failures": 0, "queue_peak_depth": 1},
+      "reason": "The client registered after the first eight alerts had been published. AlertDelivery does not replay AlertStore history to new clients; the final alert was published after registration. Queue drops and send failures were both zero"
+    },
+    "dashboard": {
+      "url": "http://127.0.0.1:5173",
+      "p0_scope_notice_visible": true,
+      "same_origin_proxy": true,
+      "api_runtime_state_visible": true,
+      "api_alerts_visible": true,
+      "api_alert_count": 9,
+      "selected_alert_detail_status": 200,
+      "selected_alert_id": "ALT-7587ecf6da417f57",
+      "selected_alert_model_score": 0.4257778823375702,
+      "selected_alert_score_type": "model_score",
+      "selected_alert_evidence_visible": true,
+      "capture_to_alert": null,
+      "capture_to_dashboard": null,
+      "websocket_url": "ws://127.0.0.1:5173/ws",
+      "first_socket_constructed_at": "2026-09-26T15:31:30.827Z",
+      "first_socket_failed_at": "2026-09-26T15:31:30.833Z",
+      "successful_socket_open_at": "2026-09-26T15:31:30.870Z",
+      "first_alert_created_at": "2026-09-26T15:31:25.919823Z",
+      "last_alert_created_at": "2026-09-26T15:31:26.040063Z",
+      "socket_open_after_last_alert_seconds": 4.829937,
+      "websocket_messages_received": 0,
+      "normal_startup_delivery_metrics": {"connected_clients": 1, "delivered_alerts": 0, "client_drops": 0, "send_failures": 0, "queue_peak_depth": 0},
+      "websocket_close_at": "2026-09-26T15:31:56.946Z",
+      "websocket_close_code": 1012,
+      "websocket_close_was_clean": true,
+      "reconnect_attempts_after_shutdown": [
+        "2026-09-26T15:31:57.952Z", "2026-09-26T15:31:59.982Z", "2026-09-26T15:32:04.008Z"
+      ],
+      "websocket_status": "LIVE after the browser connected",
+      "new_live_alert_received_in_browser": false,
+      "alert_feed_source": "GET /alerts REST history",
+      "reason": "Browser open was 4.829937 seconds after the last alert creation; all nine rows came from REST. No alert frame was observed over the browser WebSocket"
+    },
+    "shutdown": "Uvicorn logged application shutdown complete; Vite was stopped with Ctrl+C"
+  },
+  "commands": {
+    "backend_tests": "..\\.venv\\Scripts\\python.exe -m pytest backend\\tests -q",
+    "frontend_tests": "npm.cmd test -- --run (from frontend)",
+    "frontend_build": "npm.cmd run build (from frontend)",
+    "whitespace_check": "git diff --check"
+  },
+  "test_results": {"backend": "102 passed, 3 warnings", "frontend": "2 passed", "frontend_build": "passed (Vite 8.3.0)", "git_diff_check": "passed; only existing LF-to-CRLF notices"},
+  "acceptance": {
+    "packet_path_inference": "FUNCTIONALLY EXERCISED",
+    "training_parity": "INCOMPLETE",
+    "production_passive_capture": "BLOCKED",
+    "performance_claim": "none"
+  },
+  "p0_status": {
+    "DDoS": {
+      "packet-path inference": "FUNCTIONALLY EXERCISED",
+      "training parity": "INCOMPLETE",
+      "production passive capture validation": "BLOCKED"
+    },
+    "Port Scan": {
+      "packet-path inference": "FUNCTIONALLY EXERCISED",
+      "training parity": "INCOMPLETE",
+      "production passive capture validation": "BLOCKED"
+    }
+  }
+}

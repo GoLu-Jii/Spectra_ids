@@ -1,7 +1,10 @@
 import asyncio
 from datetime import timedelta
 
+from backend.app.config.detectors import DetectorConfig
 from backend.app.config.runtime import RuntimeConfig
+from backend.app.detectors.adapter import DetectorAdapter
+from backend.app.detectors.health import DetectorHealth
 from backend.app.detectors.registry import DetectorRegistry
 from backend.app.ingestion.zeek_tailer import ZeekLogTailer
 from backend.app.latency import LatencyMetricsCollector
@@ -9,6 +12,7 @@ from backend.app.pipeline.orchestrator import RuntimeOrchestrator
 from backend.app.pipeline.ordering import ReorderBuffer, ReorderConfig
 from backend.app.pipeline.windows import DetectorWindowManager, WindowConfig
 from backend.app.runtime import ZeekRuntime
+from backend.app.stores import AlertStore
 
 
 HEADER = "#separator \\x09\n#fields ts\tuid\tid.orig_h\tid.resp_h\n#types time\tstring\taddr\taddr\n"
@@ -116,6 +120,74 @@ def test_replay_mode_reads_history_once_and_has_no_zeek_availability_time(tmp_pa
     assert runtime.events_ingested == 1
     assert orchestrator._timings["C123"].zeek_available_at is None
     assert runtime.snapshot()["files_consumed"] == ["conn.log"]
+
+
+def test_replay_eof_flushes_buffered_events_and_emits_alert(tmp_path):
+    class Detector:
+        def predict(self, features, context):
+            return {
+                "status": "DETECTED",
+                "threat_class": "ReplayEOF",
+                "score_type": "probability",
+                "raw_score": 0.9,
+                "threshold": 0.5,
+                "evidence": {"source": "replay-eof-test"},
+                "context": context,
+            }
+
+    name = "replay_eof_detector"
+    detector_config = DetectorConfig(
+        detector_name=name,
+        detector_version="1",
+        model_name="test-model",
+        model_version="1",
+        feature_schema="test-schema",
+        required_features=(),
+        threshold=0.5,
+        score_type="probability",
+        artifact_path=None,
+        expected_format=None,
+    )
+    registry = DetectorRegistry()
+    registry.register(DetectorAdapter(Detector(), detector_config))
+    orchestrator = RuntimeOrchestrator(
+        ReorderBuffer(ReorderConfig(timedelta(seconds=10), 8)),
+        DetectorWindowManager(WindowConfig(timedelta(seconds=60), timedelta(seconds=1))),
+        registry,
+        {
+            name: DetectorHealth(
+                detector_name=name,
+                registered=True,
+                artifact_present=True,
+                artifact_loadable=True,
+                dependency_available=True,
+                ready_for_inference=True,
+            )
+        },
+        alert_store=AlertStore(),
+        latency_metrics=LatencyMetricsCollector(),
+    )
+    rows = (
+        "2026-09-24T12:00:00Z\tC123\t192.0.2.10\t198.51.100.20\n"
+        "2026-09-24T12:00:02Z\tC124\t192.0.2.11\t198.51.100.21\n"
+    )
+    (tmp_path / "conn.log").write_text(HEADER + rows, encoding="utf-8")
+    runtime = ZeekRuntime(
+        RuntimeConfig(mode="REPLAY", zeek_log_dir=tmp_path, log_files=("conn.log",)),
+        orchestrator,
+    )
+
+    async def exercise():
+        await runtime.start()
+        await runtime.task
+
+    asyncio.run(exercise())
+
+    assert runtime.records_read == 2
+    assert orchestrator.ordering.stats.current_buffer_depth == 0
+    assert orchestrator.get_metrics()["events_processed"] == 2
+    assert orchestrator.get_metrics()["alerts_produced"] == 2
+    assert len(orchestrator.alert_store) == 2
 
 
 def test_test_mode_does_not_start_a_live_tailer_or_background_task(tmp_path):

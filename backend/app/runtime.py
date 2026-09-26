@@ -130,6 +130,7 @@ class ZeekRuntime:
                         await asyncio.sleep(0)
             except (OSError, UnicodeError):
                 self.source_errors += 1
+        self.orchestrator.flush()
         self.running = False
 
     def _ingest(
@@ -157,6 +158,7 @@ class ZeekRuntime:
                 event,
                 event_id=f"{source_file}:{event_index}",
                 zeek_available_at=available_at,
+                capture_timing_available=self.config.mode != "REPLAY",
             )
         except Exception:
             # Keep a faulty event from terminating the long-running source task.

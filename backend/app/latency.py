@@ -23,6 +23,7 @@ class LatencyTiming:
     inference_finished_at: datetime | None = None
     alert_created_at: datetime | None = None
     delivered_at: datetime | None = None
+    capture_timing_available: bool = True
     _monotonic_marks: dict[str, float] = field(default_factory=dict, repr=False)
 
     def __post_init__(self) -> None:
@@ -49,12 +50,14 @@ class LatencyTiming:
         now: TimestampClock | None = None,
         mono: MonotonicClock = monotonic,
         zeek_available_at: datetime | None = None,
+        capture_timing_available: bool = True,
     ) -> "LatencyTiming":
         timestamp_clock = now or (lambda: datetime.now(timezone.utc))
         timing = cls(
             observed_at=observed_at,
             zeek_available_at=zeek_available_at,
             ingested_at=timestamp_clock(),
+            capture_timing_available=capture_timing_available,
         )
         timing._monotonic_marks["ingested_at"] = mono()
         return timing
@@ -104,11 +107,11 @@ class LatencyTiming:
             durations["zeek_to_ingest"] = _seconds(
                 self.ingested_at - self.zeek_available_at
             )
-        if self.alert_created_at is not None:
+        if self.capture_timing_available and self.alert_created_at is not None:
             durations["capture_to_alert"] = _seconds(
                 self.alert_created_at - self.observed_at
             )
-        if self.delivered_at is not None:
+        if self.capture_timing_available and self.delivered_at is not None:
             durations["capture_to_dashboard"] = _seconds(
                 self.delivered_at - self.observed_at
             )
@@ -128,7 +131,7 @@ class LatencyTiming:
 
     def model_dump(self) -> dict[str, datetime | None]:
         return {
-            "observed_at": self.observed_at,
+            "observed_at": self.observed_at if self.capture_timing_available else None,
             "zeek_available_at": self.zeek_available_at,
             "ingested_at": self.ingested_at,
             "feature_ready_at": self.feature_ready_at,
