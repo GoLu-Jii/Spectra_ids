@@ -37,10 +37,12 @@ class TrafficEngine:
         self,
         target_ip: str = "127.0.0.1",
         target_port: int = 8000,
+        analyzer_ip: str | None = None,
         worker_threads: int = 8,
     ) -> None:
         self.target_ip = target_ip
         self.target_port = target_port
+        self.analyzer_ip = analyzer_ip
         self.worker_threads = worker_threads
         self.running = False
         self.stats = GeneratorStats()
@@ -69,9 +71,11 @@ class TrafficEngine:
         self._executor: ThreadPoolExecutor | None = None
         self._lock = asyncio.Lock()
 
-    def set_target(self, target_ip: str, target_port: int) -> None:
+    def set_target(self, target_ip: str, target_port: int, analyzer_ip: str | None = None) -> None:
         self.target_ip = target_ip
         self.target_port = target_port
+        if analyzer_ip is not None:
+            self.analyzer_ip = analyzer_ip
 
     def toggle_ddos(self, state: bool | None = None) -> bool:
         if state is None:
@@ -100,9 +104,6 @@ class TrafficEngine:
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 2 * 1024 * 1024)
 
-        target = self.target_ip
-        default_port = self.target_port
-
         local_pkt_cnt = 0
         local_byte_cnt = 0
         local_normal_cnt = 0
@@ -114,6 +115,7 @@ class TrafficEngine:
         while self.running:
             target = self.target_ip
             default_port = self.target_port
+            analyzer = self.analyzer_ip
             try:
                 # 1. DDoS Attack Burst Mode (Heavy UDP/SYN flood)
                 if self.ddos_active:
@@ -121,6 +123,11 @@ class TrafficEngine:
                     for _ in range(50):
                         dport = self.ddos_target_port
                         sock.sendto(self._ddos_payload, (target, dport))
+                        if analyzer:
+                            try:
+                                sock.sendto(self._ddos_payload, (analyzer, dport))
+                            except Exception:
+                                pass
                         local_pkt_cnt += 1
                         local_byte_cnt += 1200
                         local_ddos_cnt += 1
@@ -132,6 +139,11 @@ class TrafficEngine:
                         self.current_scan_port += 1
                         payload = b"SYN_PROBE_SPECTRA_" + str(scan_port).encode()
                         sock.sendto(payload, (target, scan_port))
+                        if analyzer:
+                            try:
+                                sock.sendto(payload, (analyzer, scan_port))
+                            except Exception:
+                                pass
                         local_pkt_cnt += 1
                         local_byte_cnt += len(payload)
                         local_scan_cnt += 1
@@ -142,6 +154,11 @@ class TrafficEngine:
                         payload = random.choice(self._normal_payloads)
                         dest_p = default_port if random.random() > 0.3 else random.randint(1024, 65535)
                         sock.sendto(payload, (target, dest_p))
+                        if analyzer:
+                            try:
+                                sock.sendto(payload, (analyzer, dest_p))
+                            except Exception:
+                                pass
                         local_pkt_cnt += 1
                         local_byte_cnt += len(payload)
                         local_normal_cnt += 1
