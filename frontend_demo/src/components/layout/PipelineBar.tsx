@@ -1,5 +1,6 @@
 import React from 'react';
 import { useSpectra } from '../../context/SpectraContext';
+import type { PipelineStage } from '../../types/spectra';
 
 export const PipelineBar: React.FC = () => {
   const { pipelineHealth } = useSpectra();
@@ -9,7 +10,7 @@ export const PipelineBar: React.FC = () => {
       {/* Pipeline Stage Indicators */}
       <div style={styles.stagesGroup}>
         <span style={styles.groupLabel}>PIPELINE STAGES:</span>
-        {pipelineHealth.stages.map((stage, idx) => (
+        {pipelineHealth.stages.map((stage: PipelineStage, idx: number) => (
           <React.Fragment key={stage.id}>
             {idx > 0 && <span style={styles.divider}>│</span>}
             <div style={styles.stageTag}>

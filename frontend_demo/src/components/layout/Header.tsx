@@ -1,8 +1,23 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useSpectra } from '../../context/SpectraContext';
 
 export const Header: React.FC = () => {
-  const { systemState, isBackendConnected } = useSpectra();
+  const { systemState, isBackendConnected, triggerDemoScenario } = useSpectra();
+
+  // Keyboard trigger fallback for developers (Shift + Alt + D or Ctrl + Shift + D)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (
+        (e.shiftKey && e.altKey && e.key.toLowerCase() === 'd') ||
+        (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'd')
+      ) {
+        e.preventDefault();
+        triggerDemoScenario();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [triggerDemoScenario]);
 
   const connLabel = isBackendConnected
     ? 'LIVE WEBSOCKET'
@@ -12,6 +27,12 @@ export const Header: React.FC = () => {
 
   return (
     <header style={styles.header}>
+      {/* Invisible Mouse Trigger (Positioned top-left over brand area, zero visual/hover footprint) */}
+      <div
+        onClick={triggerDemoScenario}
+        style={styles.invisibleTrigger}
+      />
+
       {/* Brand */}
       <div style={styles.leftSection}>
         <span style={styles.brandTitle}>SPECtRA</span>
@@ -44,6 +65,7 @@ export const Header: React.FC = () => {
 
 const styles: Record<string, React.CSSProperties> = {
   header: {
+    position: 'relative',
     height: '44px',
     backgroundColor: '#141417',
     borderBottom: '1px solid #2B2C34',
@@ -53,6 +75,19 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '0 20px',
     fontFamily: 'var(--font-sans)',
     userSelect: 'none',
+  },
+  invisibleTrigger: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '140px',
+    height: '44px',
+    cursor: 'default',
+    backgroundColor: 'transparent',
+    border: 'none',
+    outline: 'none',
+    boxShadow: 'none',
+    zIndex: 9999,
   },
   leftSection: {
     display: 'flex',

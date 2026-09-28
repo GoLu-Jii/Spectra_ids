@@ -7,7 +7,7 @@ export const MetricStrip: React.FC = () => {
 
   // Historical array for live packet rate sparkline
   const [packetHistory, setPacketHistory] = useState<number[]>([
-    12000, 13200, 14100, 13800, 14500, 14200, 14250
+    0, 0, 0, 0, 0, 0, 0
   ]);
 
   useEffect(() => {
@@ -23,11 +23,15 @@ export const MetricStrip: React.FC = () => {
       <div style={styles.cardCell}>
         <div style={styles.cellHeader}>
           <span style={styles.cellLabel}>PACKET RATE</span>
-          <span style={styles.cellTrend}>▲ +5.1%</span>
+          <span style={{ ...styles.cellTrend, color: metrics.packetsPerSec > 0 ? '#FF7B4B' : '#8A8D9B' }}>
+            {metrics.packetsPerSec > 0 ? '▲ +5.1%' : 'IDLE'}
+          </span>
         </div>
         <div style={styles.cellBody}>
           <div style={styles.valueGroup}>
-            <span style={styles.cellValue}>{(metrics.packetsPerSec / 1000).toFixed(1)}K</span>
+            <span style={styles.cellValue}>
+              {metrics.packetsPerSec > 0 ? `${(metrics.packetsPerSec / 1000).toFixed(1)}K` : '0'}
+            </span>
             <span style={styles.cellUnit}>pps</span>
           </div>
           <Sparkline data={packetHistory} color="#FF7B4B" width={90} height={22} />

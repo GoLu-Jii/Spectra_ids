@@ -14,6 +14,8 @@ import {
   MOCK_SYSTEM_STATE,
   MOCK_THREAT_AGGREGATES,
 } from '../mock/spectraMock';
+import { globalDemoController } from '../demo/demoController';
+import type { DemoStep } from '../demo/demoScenario';
 import type {
   OperationalMetrics,
   PipelineHealth,
@@ -34,6 +36,8 @@ interface SpectraContextType {
   resetCounters: () => void;
   isBackendConnected: boolean;
   activeDetectors: string[];
+  isDemoScenarioRunning: boolean;
+  triggerDemoScenario: () => void;
 }
 
 const SpectraContext = createContext<SpectraContextType | undefined>(undefined);
@@ -60,6 +64,7 @@ const THREAT_FAMILY_MAP: Record<string, string> = {
 export const SpectraProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [bootComplete, setBootComplete] = useState<boolean>(false);
   const [isBackendConnected, setIsBackendConnected] = useState<boolean>(false);
+  const [isDemoScenarioRunning, setIsDemoScenarioRunning] = useState<boolean>(false);
 
   const [systemState, setSystemState] = useState<SystemState>({
     ...MOCK_SYSTEM_STATE,
@@ -82,6 +87,71 @@ export const SpectraProvider: React.FC<{ children: React.ReactNode }> = ({ child
   useEffect(() => {
     threatAggregatesRef.current = threatAggregates;
   }, [threatAggregates]);
+
+  const isDemoScenarioRunningRef = useRef<boolean>(false);
+  useEffect(() => {
+    isDemoScenarioRunningRef.current = isDemoScenarioRunning;
+  }, [isDemoScenarioRunning]);
+
+  const triggerDemoScenario = () => {
+    if (isDemoScenarioRunningRef.current) {
+      // Toggle OFF: stop scenario immediately. Incoming traffic drops to 0, threat counts remain visible.
+      globalDemoController.stop();
+      setIsDemoScenarioRunning(false);
+      setMetrics((prev) => ({
+        ...prev,
+        packetsPerSec: 0,
+        throughputMbps: 0,
+        flowsPerSec: 0,
+      }));
+      setThreatAggregates((prev) =>
+        prev.map((item) => ({
+          ...item,
+          ratePerSec: 0,
+        }))
+      );
+      return;
+    }
+
+    // Toggle ON: start scenario
+    setIsDemoScenarioRunning(true);
+    setThreatAggregates(MOCK_THREAT_AGGREGATES);
+    setRawAlerts([]);
+
+    globalDemoController.start(
+      (step: DemoStep) => {
+        setMetrics((prev) => ({
+          ...prev,
+          packetsPerSec: step.packetsPerSec,
+          throughputMbps: step.throughputMbps,
+          flowsPerSec: step.flowsPerSec,
+        }));
+
+        if (step.threatUpdates && step.threatUpdates.length > 0) {
+          setThreatAggregates((prev) =>
+            prev.map((item) => {
+              const update = step.threatUpdates?.find((u) => u.id === item.id);
+              if (update) {
+                return {
+                  ...item,
+                  ...update,
+                  status: update.status || 'ACTIVE',
+                };
+              }
+              return item;
+            })
+          );
+        }
+
+        if (step.newAlert) {
+          setRawAlerts((prev) => [step.newAlert!, ...prev]);
+        }
+      },
+      () => {
+        // Continuous execution until manually toggled off
+      }
+    );
+  };
 
   // Helper to process incoming alert (WebSocket or REST)
   const processIncomingAlert = (alert: BackendAlert) => {
@@ -319,44 +389,55 @@ export const SpectraProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const activeCount = currentAggregates.filter((t) => t.status === 'ACTIVE' || t.count > 0).length;
       const criticalCount = currentAggregates.filter((t) => t.severity === 'CRITICAL' && (t.status === 'ACTIVE' || t.count > 0)).length;
 
-      setMetrics((prev) => {
-        const mbpsDelta = (Math.random() - 0.5) * 1.6;
-        const ppsDelta = Math.floor((Math.random() - 0.5) * 400);
-        const fpsDelta = Math.floor((Math.random() - 0.5) * 50);
-
-        const newMbps = Math.max(15.0, Math.min(98.0, prev.throughputMbps + mbpsDelta));
-        const newPps = Math.max(5000, Math.min(35000, prev.packetsPerSec + ppsDelta));
-        const newFps = Math.max(800, Math.min(5000, prev.flowsPerSec + fpsDelta));
-
-        return {
-          ...prev,
-          throughputMbps: Number(newMbps.toFixed(1)),
-          packetsPerSec: newPps,
-          flowsPerSec: newFps,
-          activeThreatsCount: activeCount,
-          criticalThreatsCount: criticalCount,
-        };
-      });
-
-      // Continuously update active threat event counts & fluctuate stream rates in real time
-      setThreatAggregates((prev) =>
-        prev.map((item) => {
-          if (item.status !== 'ACTIVE' && item.ratePerSec === 0) return item;
-
-          // Dynamically fluctuate rate per second around baseline
-          const baseRate = item.ratePerSec > 0 ? item.ratePerSec : 450;
-          const jitter = Math.floor((Math.random() - 0.5) * 16);
-          const currentRate = Math.max(100, Math.min(1200, baseRate + jitter));
-          const countDelta = currentRate;
-
+      if (isDemoScenarioRunningRef.current) {
+        setMetrics((prev) => {
+          const ppsJitter = Math.floor((Math.random() - 0.5) * 80);
           return {
-            ...item,
-            count: item.count + countDelta,
-            ratePerSec: currentRate,
-            lastSeen: new Date().toISOString(),
+            ...prev,
+            packetsPerSec: Math.max(1000, prev.packetsPerSec + ppsJitter),
+            activeThreatsCount: activeCount,
+            criticalThreatsCount: criticalCount,
           };
-        })
-      );
+        });
+      } else {
+        setMetrics((prev) => {
+          return {
+            ...prev,
+            throughputMbps: 0,
+            packetsPerSec: 0,
+            flowsPerSec: 0,
+            activeThreatsCount: activeCount,
+            criticalThreatsCount: criticalCount,
+          };
+        });
+      }
+
+      // Continuously update active threat event counts & fluctuate stream rates ONLY while demo scenario is running
+      if (isDemoScenarioRunningRef.current) {
+        setThreatAggregates((prev) =>
+          prev.map((item) => {
+            if (item.status !== 'ACTIVE' && item.ratePerSec === 0) return item;
+
+            // Dynamically fluctuate rate per second around baseline
+            const baseRate = item.ratePerSec > 0 ? item.ratePerSec : 450;
+            const jitter = Math.floor((Math.random() - 0.5) * 16);
+            const currentRate = Math.max(100, Math.min(1200, baseRate + jitter));
+            const countDelta = currentRate;
+
+            return {
+              ...item,
+              count: item.count + countDelta,
+              ratePerSec: currentRate,
+              lastSeen: new Date().toISOString(),
+            };
+          })
+        );
+      } else {
+        // When stopped: freeze all threat counts and set ratePerSec to 0
+        setThreatAggregates((prev) =>
+          prev.map((item) => (item.ratePerSec !== 0 ? { ...item, ratePerSec: 0 } : item))
+        );
+      }
 
       // Continuously increment total ingest records
       setPipelineHealth((prev) => ({
@@ -394,6 +475,8 @@ export const SpectraProvider: React.FC<{ children: React.ReactNode }> = ({ child
         resetCounters,
         isBackendConnected,
         activeDetectors,
+        isDemoScenarioRunning,
+        triggerDemoScenario,
       }}
     >
       {children}

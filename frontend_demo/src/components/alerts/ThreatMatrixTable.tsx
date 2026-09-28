@@ -101,22 +101,28 @@ export const ThreatMatrixTable: React.FC = () => {
                     <td style={styles.td}>
                       <div style={styles.severityCell}>
                         <span
-                          className={isCritical ? 'animate-pulse' : ''}
+                          className={isActive && isCritical ? 'animate-pulse' : ''}
                           style={{
                             ...styles.statusDot,
-                            backgroundColor: isCritical ? '#FF7B4B' : isActive ? '#FF8C5F' : '#5A5D6B',
+                            backgroundColor: isActive
+                              ? isCritical
+                                ? '#FF7B4B'
+                                : '#FF8C5F'
+                              : '#5A5D6B',
                           }}
                         />
                         <span
                           className={`badge ${
-                            threat.severity === 'CRITICAL'
+                            !isActive
+                              ? 'badge-passive'
+                              : threat.severity === 'CRITICAL'
                               ? 'badge-critical'
                               : threat.severity === 'HIGH'
                               ? 'badge-high'
                               : 'badge-medium'
                           }`}
                         >
-                          {threat.severity}
+                          {isActive ? threat.severity : 'NONE'}
                         </span>
                       </div>
                     </td>

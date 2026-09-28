@@ -9,11 +9,11 @@ export const MOCK_SYSTEM_STATE: SystemState = {
 };
 
 export const MOCK_OPERATIONAL_METRICS: OperationalMetrics = {
-  throughputMbps: 42.5,
-  packetsPerSec: 14250,
-  flowsPerSec: 1820,
-  activeThreatsCount: 1,
-  criticalThreatsCount: 1,
+  throughputMbps: 0.0,
+  packetsPerSec: 0,
+  flowsPerSec: 0,
+  activeThreatsCount: 0,
+  criticalThreatsCount: 0,
 };
 
 export const MOCK_PIPELINE_HEALTH: PipelineHealth = {
@@ -38,13 +38,13 @@ export const MOCK_THREAT_AGGREGATES: ThreatAggregate[] = [
     threat_family: 'Volumetric / Protocol DDoS',
     threat_code: 'THREAT_DDoS_SYN',
     severity: 'CRITICAL',
-    count: 14820,
-    ratePerSec: 450,
+    count: 0,
+    ratePerSec: 0,
     lastSeen: new Date().toISOString(),
     confidence: 0.942,
     model: 'ddos_xgb',
     modelVersion: '1.2',
-    status: 'ACTIVE',
+    status: 'MONITORING',
     asset_name: 'Core Gateway Switch (10.0.0.1)',
     latestFlow: {
       src_ip: '192.168.1.105',

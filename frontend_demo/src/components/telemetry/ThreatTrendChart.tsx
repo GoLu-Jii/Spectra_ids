@@ -5,13 +5,13 @@ export const ThreatTrendChart: React.FC = () => {
   const { metrics } = useSpectra();
   const [timeRange, setTimeRange] = useState<'LIVE' | '10M' | '1H' | '24H'>('LIVE');
   const [dataPoints, setDataPoints] = useState<number[]>([
-    24, 38, 45, 32, 68, 92, 74, 55, 62, 78, 85, 94
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
   ]);
 
   // Continuously update trend wave with live packet rate metric
   useEffect(() => {
     const interval = setInterval(() => {
-      const ppsNormalized = Math.min(100, Math.max(15, (metrics.packetsPerSec / 25000) * 100));
+      const ppsNormalized = Math.min(100, Math.max(0, (metrics.packetsPerSec / 25000) * 100));
       setDataPoints((prev) => [...prev.slice(1), ppsNormalized]);
     }, 1200);
     return () => clearInterval(interval);
@@ -121,8 +121,12 @@ export const ThreatTrendChart: React.FC = () => {
               top: `${Math.max(10, (peakPoint.y / height) * 100 - 32)}%`,
             }}
           >
-            <span style={styles.tooltipVal}>{(metrics.packetsPerSec / 1000).toFixed(1)}K pps</span>
-            <span style={styles.tooltipBadge}>▲ +13%</span>
+            <span style={styles.tooltipVal}>
+              {metrics.packetsPerSec > 0 ? `${(metrics.packetsPerSec / 1000).toFixed(1)}K pps` : '0 pps'}
+            </span>
+            <span style={styles.tooltipBadge}>
+              {metrics.packetsPerSec > 0 ? '▲ +13%' : 'IDLE'}
+            </span>
           </div>
         </div>
       </div>
