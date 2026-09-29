@@ -1,8 +1,15 @@
 """SPECTRA Ultra-Minimal Live-Refreshing Terminal CLI for Traffic Generation (SIH 1745).
 
 Lightweight, single-screen interactive terminal CLI:
-- Continuously auto-refreshes screen live every 250ms (no blocking input!)
-- Instant hotkey actions: [1], [2], [3], [S], [C], [A], [Q]
+- Continuously auto-refreshes screen live every 250ms
+- Instant hotkey actions: [1]-[8], [S], [C], [A], [Q]
+- Generates traffic for ALL 6 SPECTRA PRD Threat Vector Flows:
+  1. Volumetric DDoS SYN/UDP Flood
+  2. Reconnaissance Port Scan
+  3. Botnet C2 Beaconing
+  4. DGA + DNS Tunnelling
+  5. Malware in Encrypted Sessions (TLS/QUIC)
+  6. Data Exfiltration Anomaly
 - Supports dual-destination streaming to PC 2 Target AND PC 3 Analyzer!
 """
 
@@ -80,9 +87,24 @@ def main() -> None:
 
             if not prompt_mode:
                 status_str = "RUNNING ▶" if engine.running else "STOPPED ■"
+                norm_str = "ACTIVE ℹ" if engine.normal_active else "OFF"
                 ddos_str = "ACTIVE 🔥" if engine.ddos_active else "OFF"
                 scan_str = "ACTIVE ⚡" if engine.portscan_active else "OFF"
-                norm_str = "ACTIVE ℹ" if engine.normal_active else "OFF"
+                c2_str = "ACTIVE 📡" if engine.c2_active else "OFF"
+                dns_str = "ACTIVE 🌐" if engine.dns_tunnel_active else "OFF"
+                tls_str = "ACTIVE 🔒" if engine.tls_malware_active else "OFF"
+                exfil_str = "ACTIVE 📤" if engine.exfil_active else "OFF"
+
+                all_on = (
+                    engine.ddos_active
+                    and engine.portscan_active
+                    and engine.c2_active
+                    and engine.dns_tunnel_active
+                    and engine.tls_malware_active
+                    and engine.exfil_active
+                )
+                all_str = "ALL 6 ACTIVE 🚨" if all_on else "PARTIAL / CUSTOM"
+
                 analyzer_str = engine.analyzer_ip if engine.analyzer_ip else "NONE (Direct Target Only)"
 
                 clear_screen()
@@ -97,16 +119,21 @@ def main() -> None:
                 print(f" Bandwidth     : {mbps:.1f} Mbps")
                 print(f" Total Sent    : {engine.stats.total_packets:,} pkts")
                 print("---------------------------------------------------------------")
-                print(f" [1] Normal Background Traffic : {norm_str}")
-                print(f" [2] Volumetric DDoS Flood     : {ddos_str}")
-                print(f" [3] Recon Port Scan           : {scan_str}")
+                print(f" [1] Normal Background Traffic   : {norm_str}")
+                print(f" [2] Volumetric DDoS Flood       : {ddos_str}")
+                print(f" [3] Recon Port Scan             : {scan_str}")
+                print(f" [4] Botnet C2 Beaconing         : {c2_str}")
+                print(f" [5] DGA + DNS Tunnelling        : {dns_str}")
+                print(f" [6] Malware Encrypted (TLS/QUIC): {tls_str}")
+                print(f" [7] Data Exfiltration Anomaly   : {exfil_str}")
+                print(f" [8] BURST ALL 6 THREAT VECTORS  : {all_str}")
                 print("---------------------------------------------------------------")
                 print(" [S] Start / Stop Engine")
                 print(" [C] Change Target PC 2 IP / Port")
                 print(" [A] Set Analyzer PC 3 IP (Dual Stream for WiFi)")
                 print(" [Q] Quit")
                 print("===============================================================")
-                print(" Press Hotkey [1-3, S, C, A, Q] (Live Refresh Active)...")
+                print(" Press Hotkey [1-8, S, C, A, Q] (Live Refresh Active)...")
 
             # Check non-blocking key input
             key = get_key_nonblocking()
@@ -124,6 +151,16 @@ def main() -> None:
                 engine.toggle_ddos()
             elif key == "3":
                 engine.toggle_portscan()
+            elif key == "4":
+                engine.toggle_c2()
+            elif key == "5":
+                engine.toggle_dns_tunnel()
+            elif key == "6":
+                engine.toggle_tls_malware()
+            elif key == "7":
+                engine.toggle_exfil()
+            elif key == "8":
+                engine.toggle_all_threats()
             elif key == "C":
                 prompt_mode = True
                 print("\n --- Change Target PC 2 Address ---")

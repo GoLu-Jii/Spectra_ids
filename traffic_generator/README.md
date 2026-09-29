@@ -2,11 +2,19 @@
 
 Designed specifically for the **Smart India Hackathon (SIH 1745)** 3-PC physical demonstration setup.
 
+Supports **ALL 6 SPECTRA PRD Threat Vectors**:
+1. 🔥 **Volumetric / Protocol DDoS**
+2. ⚡ **Reconnaissance / Port Scan**
+3. 📡 **Botnet C2 Beaconing**
+4. 🌐 **DGA + DNS Tunnelling**
+5. 🔒 **Malware in Encrypted Sessions (TLS/QUIC)**
+6. 📤 **Data Exfiltration Anomaly**
+
 ---
 
 ## 🖥️ 3-PC Setup Architecture & Topology
 
-```
+```text
 ┌────────────────────────────────┐         High-Speed Ingress Traffic           ┌────────────────────────────────┐
 │     PC 1: Traffic Generator    │ ───────────────────────────────────────────> │     PC 2: Target Receiver      │
 │  (Sender Node - IP: PC1_IP)    │ ────────┐                                    │  (Target Node - IP: PC2_IP)    │
@@ -36,7 +44,7 @@ python -m traffic_generator.minimal_receiver
 
 ### 2. On PC 1 (Traffic Generator Node)
 
-Open Terminal / PowerShell on **PC 1** and start the traffic generator, providing PC 2's IP and PC 3's IP:
+Open Terminal / PowerShell on **PC 1** and start the traffic generator CLI, providing PC 2's IP and PC 3's IP:
 
 ```bash
 python -m traffic_generator.minimal_cli <PC2_TARGET_IP> 8000 <PC3_ANALYZER_IP>
@@ -48,11 +56,16 @@ python -m traffic_generator.minimal_cli 10.179.194.55 8000 10.179.194.102
 
 > **Note for WiFi / Mobile Hotspot Demos**: Specifying PC 3's Analyzer IP enables **Dual-Stream Mode**, sending frames to BOTH PC 2 (Target Receiver) AND PC 3 (SPECTRA Analyzer) simultaneously so PC 3 receives 100% of live packets without requiring a hardware SPAN switch.
 
-#### Keyboard Controls (Live 250ms Screen Refresh):
+#### Keyboard Hotkey Controls (Live 250ms Screen Refresh):
 * **`S`**: **Start / Stop Transmission Engine**
 * **`1`**: **Toggle Normal Background Stream** (80-90% majority traffic)
-* **`2`**: **Inject Volumetric DDoS SYN/UDP Flood Attack** (Surges packet rate to **50,000+ pps**)
-* **`3`**: **Inject Reconnaissance Port Scan Attack** (Sweeps ports 1-1000)
+* **`2`**: **Toggle Volumetric DDoS SYN/UDP Flood Attack**
+* **`3`**: **Toggle Reconnaissance Port Scan Attack** (Ports 1-1000)
+* **`4`**: **Toggle Botnet C2 Beaconing Stream**
+* **`5`**: **Toggle DGA + DNS Tunnelling Request Stream**
+* **`6`**: **Toggle Malware in Encrypted Sessions Stream (TLS/QUIC)**
+* **`7`**: **Toggle Data Exfiltration Anomaly Stream**
+* **`8`**: **BURST ALL 6 THREAT VECTORS SIMULTANEOUSLY**
 * **`C`**: **Change Target PC 2 IP / Port** dynamically
 * **`A`**: **Set / Update Analyzer PC 3 IP** dynamically
 * **`Q`**: **Quit Generator**
@@ -84,21 +97,10 @@ Confirm top-right status shows **🟢 LIVE WEBSOCKET** / **ONLINE**.
 
 ## 🎭 Live Pitch Demonstration Walkthrough for Judges
 
-1. **Normal Baseline Operation (0:00 - 0:30)**:
+1. **Normal Baseline Operation**:
    * On PC 1, press **`S`** to start sending normal baseline traffic.
-   * Observe PC 1 & PC 2 terminal screens updating continuously live every 250ms (~10,000 to 15,000 pps).
-   * On PC 3 Dashboard, show normal operational metrics (**ONLINE** status, pipeline stages green).
+   * Observe PC 1 & PC 2 terminal screens updating continuously live every 250ms.
 
-2. **DDoS Attack Injection (0:30 - 1:00)**:
-   * On PC 1, press **`2`** to inject a **Volumetric DDoS Attack Burst**.
-   * Observe PC 1 & PC 2 packet rates surging live to **50,000+ pps**.
-   * On PC 3 Dashboard, SPECTRA instantly triggers a **`CRITICAL` Volumetric DDoS Alert** with **94.2% Calibrated Confidence**.
-   * Expand the DDoS alert row to show the **Forensic Chain of Custody & Model Provenance** drawer.
-
-3. **Reconnaissance Port Scan Injection (1:00 - 1:30)**:
-   * On PC 1, press **`3`** to inject a **Port Scan Attack** (ports 1–1000).
-   * On PC 3 Dashboard, select **All 6 Threats** to observe detector activity across the **Reconnaissance / Port Scan** threat family vector.
-
-4. **Analyst Mitigation & Reset (1:30 - 2:00)**:
-   * On PC 1, press **`2`** and **`3`** to turn off attack bursts.
-   * On PC 3 Dashboard, click **`Mark Monitored`** or **`ACKNOWLEDGE THREAT VECTOR`** to demonstrate human-in-the-loop analyst threat resolution.
+2. **All 6 Threat Vectors Injection**:
+   * On PC 1, press hotkeys **`2`**, **`3`**, **`4`**, **`5`**, **`6`**, **`7`** or press **`8`** to burst **ALL 6 THREAT VECTORS**.
+   * On PC 3 Dashboard, observe all 6 threat family rows activating with real-time packet ingress and forensic payload evidence.

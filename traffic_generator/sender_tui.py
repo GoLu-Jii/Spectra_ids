@@ -1,7 +1,7 @@
 """SPECTRA High-Speed Traffic Generator — PC 1 Sender Terminal UI (Textual).
 
 Smart India Hackathon (SIH Problem Statement 1745) - 3-PC Setup:
-- PC 1 (This Machine): Sends high-throughput traffic + threat injections
+- PC 1 (This Machine): Sends high-throughput traffic + all 6 threat injections
 - PC 2 (Target Receiver): Receives traffic streams
 - PC 3 (SPECTRA Passive Analysis Enclave): Analyzes live mirror feed in Dashboard
 """
@@ -142,10 +142,15 @@ class SenderApp(App):
         border: 1px solid #2B2C34;
         margin: 1 2;
         padding: 1;
-        height: 8;
+        height: 11;
     }
 
     .input-row {
+        height: 3;
+        margin-bottom: 1;
+    }
+
+    .btn-row {
         height: 3;
         margin-bottom: 1;
     }
@@ -189,6 +194,32 @@ class SenderApp(App):
         color: #FFFFFF;
     }
 
+    #btn-c2 {
+        background: #8B5CF6;
+        color: #FFFFFF;
+    }
+
+    #btn-dns {
+        background: #06B6D4;
+        color: #FFFFFF;
+    }
+
+    #btn-tls {
+        background: #EC4899;
+        color: #FFFFFF;
+    }
+
+    #btn-exfil {
+        background: #D97706;
+        color: #FFFFFF;
+    }
+
+    #btn-all {
+        background: #DC2626;
+        color: #FFFFFF;
+        text-style: bold;
+    }
+
     .log-panel {
         background: #090A0F;
         border: 1px solid #2B2C34;
@@ -204,9 +235,14 @@ class SenderApp(App):
 
     BINDINGS = [
         ("s", "toggle_engine", "Start/Stop Engine"),
-        ("n", "toggle_normal", "Toggle Normal Traffic"),
-        ("d", "toggle_ddos", "Toggle DDoS Attack"),
-        ("p", "toggle_portscan", "Toggle Port Scan"),
+        ("1", "toggle_normal", "Toggle Normal"),
+        ("2", "toggle_ddos", "Toggle DDoS"),
+        ("3", "toggle_portscan", "Toggle PortScan"),
+        ("4", "toggle_c2", "Toggle C2 Beacon"),
+        ("5", "toggle_dns", "Toggle DGA DNS"),
+        ("6", "toggle_tls", "Toggle TLS Malware"),
+        ("7", "toggle_exfil", "Toggle Data Exfil"),
+        ("8", "toggle_all", "Burst ALL 6"),
         ("q", "quit", "Quit"),
     ]
 
@@ -247,9 +283,18 @@ class SenderApp(App):
             Horizontal(
                 Button("START ENGINE (S)", id="btn-start"),
                 Button("STOP ENGINE", id="btn-stop"),
-                Button("NORMAL (N)", id="btn-normal"),
-                Button("DDoS ATTACK (D)", id="btn-ddos"),
-                Button("PORT SCAN (P)", id="btn-portscan"),
+                Button("NORMAL (1)", id="btn-normal"),
+                Button("DDoS (2)", id="btn-ddos"),
+                Button("PORT SCAN (3)", id="btn-portscan"),
+                classes="btn-row",
+            ),
+            Horizontal(
+                Button("C2 BEACON (4)", id="btn-c2"),
+                Button("DNS TUNNEL (5)", id="btn-dns"),
+                Button("TLS MALWARE (6)", id="btn-tls"),
+                Button("DATA EXFIL (7)", id="btn-exfil"),
+                Button("BURST ALL 6 THREATS (8)", id="btn-all"),
+                classes="btn-row",
             ),
             classes="control-panel",
         )
@@ -263,10 +308,10 @@ class SenderApp(App):
 
     def on_mount(self) -> None:
         log = self.query_one("#log-box", Log)
-        log.write_line("[bold green]SPECTRA Traffic Generator Initialized.[/bold green]")
+        log.write_line("[bold green]SPECTRA Traffic Generator Initialized (6-Vector Threat Engine).[/bold green]")
         log.write_line(f"PC 1 Network Interfaces Detected: {', '.join(self.local_ips)}")
         log.write_line(f"Current Target Destination: {self.engine.target_ip}:{self.engine.target_port}")
-        log.write_line("Type PC 2's IP above or press [b]S[/b] to Start/Stop, [b]D[/b] for DDoS, [b]P[/b] for Port Scan.")
+        log.write_line("Hotkeys: [b]S[/b] Start/Stop | [b]1-7[/b] Threat Toggles | [b]8[/b] Burst All 6 Threats.")
         self.set_interval(1.0, self._update_metrics)
 
     def on_input_changed(self, event: Input.Changed) -> None:
@@ -310,11 +355,19 @@ class SenderApp(App):
 
         modes = []
         if self.engine.ddos_active:
-            modes.append("CRITICAL DDoS FLOOD")
+            modes.append("DDoS")
         if self.engine.portscan_active:
-            modes.append("RECON PORT SCAN")
+            modes.append("PortScan")
+        if self.engine.c2_active:
+            modes.append("C2Beacon")
+        if self.engine.dns_tunnel_active:
+            modes.append("DNSTunnel")
+        if self.engine.tls_malware_active:
+            modes.append("TLSMalware")
+        if self.engine.exfil_active:
+            modes.append("DataExfil")
         if self.engine.normal_active:
-            modes.append("BACKGROUND NORMAL")
+            modes.append("Normal")
 
         threat_label = " + ".join(modes) if modes else "STANDBY / IDLE"
         card_threat.update_val(threat_label)
@@ -332,6 +385,16 @@ class SenderApp(App):
             self.action_toggle_ddos()
         elif button_id == "btn-portscan":
             self.action_toggle_portscan()
+        elif button_id == "btn-c2":
+            self.action_toggle_c2()
+        elif button_id == "btn-dns":
+            self.action_toggle_dns()
+        elif button_id == "btn-tls":
+            self.action_toggle_tls()
+        elif button_id == "btn-exfil":
+            self.action_toggle_exfil()
+        elif button_id == "btn-all":
+            self.action_toggle_all()
 
     def action_toggle_engine(self, state: bool | None = None) -> None:
         log = self.query_one("#log-box", Log)
@@ -346,7 +409,7 @@ class SenderApp(App):
 
         if state is True or (state is None and not self.engine.running):
             self.engine.start()
-            log.write_line(f"[bold green]▶ ENGINE STARTED[/bold green] -> Transmitting 50,000+ pps stream to {self.engine.target_ip}:{self.engine.target_port}")
+            log.write_line(f"[bold green]▶ ENGINE STARTED[/bold green] -> Transmitting high-speed stream to {self.engine.target_ip}:{self.engine.target_port}")
         else:
             self.engine.stop()
             log.write_line("[bold red]■ ENGINE STOPPED[/bold red] -> Standby mode")
@@ -361,7 +424,7 @@ class SenderApp(App):
         state = self.engine.toggle_ddos()
         log = self.query_one("#log-box", Log)
         if state:
-            log.write_line("[bold red]🔥 THREAT VECTOR INJECTED: Volumetric DDoS SYN/UDP Flood (+45000 pps burst)[/bold red]")
+            log.write_line("[bold red]🔥 THREAT VECTOR INJECTED: Volumetric DDoS SYN/UDP Flood[/bold red]")
         else:
             log.write_line("[yellow]✓ Threat Vector Ceased: DDoS Flood Stopped[/yellow]")
 
@@ -372,6 +435,46 @@ class SenderApp(App):
             log.write_line("[bold orange1]⚡ THREAT VECTOR INJECTED: Reconnaissance Port Scan (Ports 1-1000)[/bold orange1]")
         else:
             log.write_line("[yellow]✓ Threat Vector Ceased: Port Scan Stopped[/yellow]")
+
+    def action_toggle_c2(self) -> None:
+        state = self.engine.toggle_c2()
+        log = self.query_one("#log-box", Log)
+        if state:
+            log.write_line("[bold magenta]📡 THREAT VECTOR INJECTED: Botnet C2 Beaconing Stream[/bold magenta]")
+        else:
+            log.write_line("[yellow]✓ Threat Vector Ceased: Botnet C2 Stopped[/yellow]")
+
+    def action_toggle_dns(self) -> None:
+        state = self.engine.toggle_dns_tunnel()
+        log = self.query_one("#log-box", Log)
+        if state:
+            log.write_line("[bold cyan]🌐 THREAT VECTOR INJECTED: DGA + DNS Tunnelling Request Stream[/bold cyan]")
+        else:
+            log.write_line("[yellow]✓ Threat Vector Ceased: DNS Tunnelling Stopped[/yellow]")
+
+    def action_toggle_tls(self) -> None:
+        state = self.engine.toggle_tls_malware()
+        log = self.query_one("#log-box", Log)
+        if state:
+            log.write_line("[bold pink1]🔒 THREAT VECTOR INJECTED: Malware in Encrypted Sessions Stream[/bold pink1]")
+        else:
+            log.write_line("[yellow]✓ Threat Vector Ceased: TLS Malware Stream Stopped[/yellow]")
+
+    def action_toggle_exfil(self) -> None:
+        state = self.engine.toggle_exfil()
+        log = self.query_one("#log-box", Log)
+        if state:
+            log.write_line("[bold yellow]📤 THREAT VECTOR INJECTED: Data Exfiltration Anomaly Stream[/bold yellow]")
+        else:
+            log.write_line("[yellow]✓ Threat Vector Ceased: Data Exfiltration Stopped[/yellow]")
+
+    def action_toggle_all(self) -> None:
+        state = self.engine.toggle_all_threats()
+        log = self.query_one("#log-box", Log)
+        if state:
+            log.write_line("[bold red blink]🚨 BURST MODE ACTIVATED: ALL 6 SPECTRA PRD THREAT VECTORS SIMULTANEOUSLY INJECTED![/bold red blink]")
+        else:
+            log.write_line("[bold green]✓ ALL THREAT VECTORS CLEARED: Returning to Normal Baseline Stream[/bold green]")
 
 
 def main() -> None:
